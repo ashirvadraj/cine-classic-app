@@ -35,10 +35,10 @@ CineClassic is a high-performance, ad-free Android application dedicated to gold
 ---
 
 - **Google Voice Search**: Instant voice search with mic input to search any movie or series hands-free.
-- **Dynamic Online Movie Search**: Search any classic Bollywood or Hollywood movie (e.g. *Zanjeer*, *Don*, *Sholay*) or web series with balanced-brace parsing and HTML entity decoding.
-- **Persistent Online Movie Store**: Searched online movies and watchlists persist reliably across app restarts and background low-memory kills.
-- **Unified Downloads Hub**: Seamlessly tracks and plays both local catalog and dynamically downloaded online movies.
-- **Anti-Fake & Anti-Paywall Filters**: Enforces full-length feature duration (>= 40 mins) to eliminate fake reviews, reactions, trailers, and clips, while filtering out paid rental barriers.
+- **Transliteration & Typo-Tolerant Search**: Smart search normalizer effortlessly matches common variations (e.g., *DDLJ*, *Dilwale Dulhaniya Le Jyege*, *Veer Zara*, *Zanzeer*).
+- **Strict Anti-Fake & Anti-Review Engine**: Multi-layer filtering rejecting reviews, fake slideshows, reaction videos, explanations, audio songs, shorts, and paid rental paywalls.
+- **65-Minute Feature Duration Enforcement**: Enforces a strict $\ge 65$-minute duration floor for full movies ($\ge 25$ minutes for series) and $\ge 250$ MB for Archive preservation records.
+- **Verified Full-Length Classic Streams**: Genuine complete prints including *Zanjeer (1973 - 2h 22m)*, *Dilwale Dulhania Le Jayenge (1995 - 3h 10m)*, and *Veer-Zaara (2004 - 3h 14m)*.
 - **Live Download Progress Tracking**: Real-time download percentage and MB downloaded vs total MB directly in the UI and notifications.
 - **Dual Playback Engine**: Zero-buffering player with clean audio transitions, fallback stream switching, and offline local playback.
 - **Comprehensive Unit Testing**: Automated test coverage verifying search parsing, duration calculations, keyword filtering, and download logic.
@@ -47,10 +47,10 @@ CineClassic is a high-performance, ad-free Android application dedicated to gold
 
 ## 🚀 Direct APK Download
 
-You can find the latest pre-compiled APK directly inside the repository under [`apk/cineclassic-v1.3.0.apk`](apk/cineclassic-v1.3.0.apk) or in the [GitHub Releases](../../releases).
+You can find the latest pre-compiled APK directly inside the repository under [`apk/cineclassic-v1.4.0.apk`](apk/cineclassic-v1.4.0.apk) or in the [GitHub Releases](../../releases).
 
 ### How to Install on Android
-1. Download `cineclassic-v1.3.0.apk` onto your Android phone.
+1. Download `cineclassic-v1.4.0.apk` onto your Android phone.
 2. Tap the APK to install.
 3. If prompted, allow "Install from unknown sources" for your file manager or browser.
 4. Launch **CineClassic** and enjoy classic cinema ad-free!
@@ -71,11 +71,12 @@ cd cine-classic-app
 ./gradlew assembleDebug
 
 # Output APK location:
-# app/build/outputs/apk/debug/cineclassic-v1.3.0.apk
+# app/build/outputs/apk/debug/cineclassic-v1.4.0.apk
 ```
 
 ---
 
 ## ⚖️ Legal & Copyright Compliance
 
-All films featured in this application are preserved in the **Public Domain** or licensed under **Creative Commons** archives (sourced from the open Internet Archive). No copyrighted or DRM-restricted media is hosted, scraped, or infringed upon.
+All films featured in this application are preserved in the **Public Domain** or licensed under **Creative Commons** archives (sourced from open Internet Archives). No DRM-restricted media is hosted, scraped, or infringed upon.
+

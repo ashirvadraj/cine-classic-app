@@ -22,16 +22,16 @@
     "year": 1973,
     "language": "Hindi",
     "genre": "Action / Crime / Drama",
-    "duration": "2h 25m",
+    "duration": "2h 22m",
     "director": "Prakash Mehra",
     "cast": ["Amitabh Bachchan", "Jaya Bhaduri", "Pran", "Ajit"],
-    "synopsis": "The landmark film that established Amitabh Bachchan as the Angry Young Man. Inspector Vijay battles nightmares of his parents murder and takes down the crime syndicate led by Teja.",
+    "synopsis": "The landmark film that established Amitabh Bachchan as the Angry Young Man. Inspector Vijay battles nightmares of his parents murder and takes down the crime syndicate led by Teja. Co-starring Pran and Jaya Bhaduri. Zanjeer, Zanzeer 1973.",
     "rating": "8.0/10",
     "posterUrl": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1574267432553-4b4628081c31?w=1200&q=80",
-    "videoUrl": "archive:zanjeer-1973-classic-hindi-film-amitabh-bachchan-prakash-mehra-pran-jaya-bhaduri",
-    "quality": "1080p Restored",
-    "fileSizeBytes": 1350000000
+    "videoUrl": "https://archive.org/download/zanjeer-1973-hindi.-dv-drip.-720p.-avc.x-264.-aac-dd-5.1.-arabic.-esubs.-extra-movies.-by-juleyano/Zanjeer%20%281973%29%20Hindi.DvDRip.720p.AVC.x264.AAC%2CDD5.1.Arabic.ESubs.ExtraMovies.BY%20Juleyano.mp4",
+    "quality": "720p Restored",
+    "fileSizeBytes": 825946408
   },
   {
     "id": "hindi_01",
@@ -236,5 +236,39 @@
     "videoUrl": "youtube:rehNT9wIjUg",
     "quality": "1080p HD",
     "fileSizeBytes": 680000000
+  },
+  {
+    "id": "hindi_ddlj_1995",
+    "title": "Dilwale Dulhania Le Jayenge",
+    "year": 1995,
+    "language": "Hindi",
+    "genre": "Romance / Drama / Musical",
+    "duration": "3h 10m",
+    "director": "Aditya Chopra",
+    "cast": ["Shah Rukh Khan", "Kajol", "Amrish Puri", "Farida Jalal", "Anupam Kher"],
+    "synopsis": "Raj and Simran meet on a trip across Europe and fall deeply in love. When Raj discovers Simran is promised to another man in Punjab, he follows her to India to win the hearts of her family without eloping. DDLJ, Dilwale Dulhaniya Le Jayenge.",
+    "rating": "8.0/10",
+    "posterUrl": "https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=500&q=80",
+    "backdropUrl": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&q=80",
+    "videoUrl": "https://archive.org/download/dilwale-dulhania-le-jayenge/Dilwale%20Dulhania%20Le%20Jayenge.mp4",
+    "quality": "720p HD",
+    "fileSizeBytes": 1774022030
+  },
+  {
+    "id": "hindi_veer_zaara_2004",
+    "title": "Veer-Zaara",
+    "year": 2004,
+    "language": "Hindi",
+    "genre": "Romance / Drama / Musical",
+    "duration": "3h 14m",
+    "director": "Yash Chopra",
+    "cast": ["Shah Rukh Khan", "Preity Zinta", "Rani Mukerji", "Amitabh Bachchan", "Hema Malini"],
+    "synopsis": "Squadron Leader Veer Pratap Singh, an Indian Air Force rescue pilot, falls in love with Zaara Haayat Khan, an independent Pakistani woman. Veer spends 22 years in a Pakistani prison to protect her honor until human rights lawyer Saamiya Siddiqui takes up his defense. Veer Zaara, Veer Zara.",
+    "rating": "7.8/10",
+    "posterUrl": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=500&q=80",
+    "backdropUrl": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=1200&q=80",
+    "videoUrl": "https://archive.org/download/veer-zaara-1080p-2004/Veer%20Zaara%201080p%202004.mp4",
+    "quality": "1080p Full HD",
+    "fileSizeBytes": 2695374563
   }
 ]

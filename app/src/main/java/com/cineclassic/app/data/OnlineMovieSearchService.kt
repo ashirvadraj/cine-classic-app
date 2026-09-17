@@ -15,16 +15,41 @@ object OnlineMovieSearchService {
     fun getCachedMovie(id: String): Movie? = onlineCache[id]
 
     val BLACKLIST_KEYWORDS = listOf(
-        "review", "trailer", "teaser", "fact", "facts", "unknown fact",
-        "reaction", "explained", "explanation", "analysis", "roast",
-        "scene", "scenes", "best scene", "fight scene", "making of",
-        "behind the scene", "status", "spoiler", "preview", "interview",
-        "tribute", "parody", "jukebox", "audio song", "video song",
-        "full song", "full songs", "box office", "short", "shorts"
+        "review", "reviews", "reviewer", "trailer", "teaser", "promo", "preview",
+        "fact", "facts", "facst", "unknown fact", "unknown facts", "trivia",
+        "reaction", "reactions", "public reaction",
+        "explained", "explain", "explainer", "explanation", "analysis", "breakdown",
+        "roast", "parody", "spoof",
+        "scene", "scenes", "best scene", "fight scene", "comedy scene", "deleted scene", "deleted scenes", "bloopers",
+        "climax", "ending explained", "storyline", "story explained", "full story", "recap", "summary",
+        "making of", "behind the scene", "behind the scenes", "years of",
+        "status", "spoiler", "spoilers", "interview", "podcast", "discussion",
+        "tribute", "unboxing", "audiobook", "audio story",
+        "jukebox", "audio song", "video song", "full song", "full songs", "all songs",
+        "soundtrack", "ost", "album", "gaane", "gaana", "geet", "lyrics",
+        "dialogue", "dialogues", "box office", "short", "shorts",
+        "today's video", "this video is about", "not a full movie"
+    )
+
+    val CHANNEL_BLACKLIST = listOf(
+        "review", "reviews", "explainer", "explained", "reaction", "reactions",
+        "music", "songs", "gaane", "geet", "records", "audio", "lyrics",
+        "textile", "factory", "status", "bold"
+    )
+
+    val SNIPPET_BLACKLIST = listOf(
+        "not a full movie", "not the full movie", "this is not a movie", "not a movie",
+        "review", "explained", "explanation", "facts", "analysis", "storyline",
+        "today's video", "we revisit", "#review", "#facts", "#explained", "#recap"
     )
 
     val PAID_KEYWORDS = listOf(
         "buy", "rent", "purchase", "paid", "youtube movies"
+    )
+
+    val STOP_WORDS = setOf(
+        "movie", "movies", "film", "films", "full", "hd", "watch", "online",
+        "the", "and", "in", "hindi", "english", "original", "official"
     )
 
     fun cacheMovie(movie: Movie) {
@@ -32,6 +57,21 @@ object OnlineMovieSearchService {
     }
 
     fun getAllCachedMovies(): List<Movie> = onlineCache.values.toList()
+
+    fun normalizeSearchQuery(text: String): String {
+        return text.lowercase()
+            .replace("zanzeer", "zanjeer")
+            .replace("dulhaniya", "dulhania")
+            .replace("jyege", "jayenge")
+            .replace("zara", "zaara")
+            .replace("mvie", "movie")
+            .replace("muvi", "movie")
+            .replace("ddlj", "dilwale dulhania le jayenge")
+            .replace("k3g", "kabhi khushi kabhie gham")
+            .replace(Regex("[^a-zA-Z0-9\\s]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+    }
 
     fun unescapeHtml(text: String): String {
         return text
@@ -49,6 +89,50 @@ object OnlineMovieSearchService {
     fun isBlacklisted(title: String): Boolean {
         val titleLower = title.lowercase()
         return BLACKLIST_KEYWORDS.any { titleLower.contains(it) }
+    }
+
+    fun isChannelBlacklisted(channelName: String): Boolean {
+        val lower = channelName.lowercase()
+        return CHANNEL_BLACKLIST.any { lower.contains(it) }
+    }
+
+    fun isSnippetBlacklisted(snippet: String): Boolean {
+        val lower = snippet.lowercase()
+        return SNIPPET_BLACKLIST.any { lower.contains(it) }
+    }
+
+    fun matchesQueryTokens(title: String, query: String): Boolean {
+        val normalizedQuery = normalizeSearchQuery(query)
+        val normalizedTitle = normalizeSearchQuery(title)
+        val tokens = normalizedQuery.split(" ").filter { it.length >= 3 && !STOP_WORDS.contains(it) }
+        if (tokens.isEmpty()) return true
+        return tokens.all { normalizedTitle.contains(it) }
+    }
+
+    fun extractSnippetText(v: JSONObject): String {
+        val detailed = v.optJSONArray("detailedMetadataSnippets")
+        if (detailed != null && detailed.length() > 0) {
+            val runs = detailed.optJSONObject(0)?.optJSONObject("snippetText")?.optJSONArray("runs")
+            if (runs != null) {
+                val sb = java.lang.StringBuilder()
+                for (i in 0 until runs.length()) {
+                    sb.append(runs.optJSONObject(i)?.optString("text") ?: "")
+                }
+                return sb.toString()
+            }
+        }
+        val snippetObj = v.optJSONObject("descriptionSnippet")
+        if (snippetObj != null) {
+            val runs = snippetObj.optJSONArray("runs")
+            if (runs != null) {
+                val sb = java.lang.StringBuilder()
+                for (i in 0 until runs.length()) {
+                    sb.append(runs.optJSONObject(i)?.optString("text") ?: "")
+                }
+                return sb.toString()
+            }
+        }
+        return ""
     }
 
     fun extractYtInitialData(html: String): String? {
@@ -96,19 +180,20 @@ object OnlineMovieSearchService {
         val trimmed = query.trim()
         if (trimmed.length < 2) return@withContext emptyList()
 
+        val normalized = normalizeSearchQuery(trimmed)
         val results = mutableListOf<Movie>()
         val seenIds = mutableSetOf<String>()
 
-        val isSeriesQuery = trimmed.contains("series", ignoreCase = true) ||
-                trimmed.contains("episode", ignoreCase = true) ||
-                trimmed.contains("season", ignoreCase = true)
+        val isSeriesQuery = normalized.contains("series") ||
+                normalized.contains("episode") ||
+                normalized.contains("season")
 
-        val minMinutesRequired = if (isSeriesQuery) 20 else 40
+        val minMinutesRequired = if (isSeriesQuery) 25 else 65
 
         // 1. YouTube Search with Long Video Filter (&sp=EgIYAg%253D%253D)
         var ytConn: HttpURLConnection? = null
         try {
-            val encodedQuery = URLEncoder.encode("$trimmed full movie", "UTF-8")
+            val encodedQuery = URLEncoder.encode("$normalized full movie", "UTF-8")
             val ytUrl = URL("https://www.youtube.com/results?search_query=$encodedQuery&sp=EgIYAg%253D%253D")
             ytConn = ytUrl.openConnection() as HttpURLConnection
             ytConn.setRequestProperty(
@@ -122,7 +207,6 @@ object OnlineMovieSearchService {
             if (ytConn.responseCode == HttpURLConnection.HTTP_OK) {
                 val html = ytConn.inputStream.bufferedReader().use { it.readText() }
 
-                // Extract ytInitialData JSON using robust balanced brace extractor
                 val jsonStr = extractYtInitialData(html)
                 if (!jsonStr.isNullOrEmpty()) {
                     val root = JSONObject(jsonStr)
@@ -148,15 +232,21 @@ object OnlineMovieSearchService {
                                 val title = unescapeHtml(rawTitle)
                                 if (title.isBlank()) continue
 
-                                // Exclude reviews, trailers, facts, etc.
+                                // 1. Title blacklist check
                                 if (isBlacklisted(title)) continue
 
-                                // Exclude paid rentals & YouTube Movies
+                                // 2. Channel check
                                 val rawOwner = v.optJSONObject("ownerText")
                                     ?.optJSONArray("runs")?.optJSONObject(0)?.optString("text") ?: ""
                                 val ownerName = unescapeHtml(rawOwner)
                                 if (ownerName.contains("YouTube Movies", ignoreCase = true)) continue
+                                if (isChannelBlacklisted(ownerName)) continue
 
+                                // 3. Snippet / Description check
+                                val snippet = extractSnippetText(v)
+                                if (isSnippetBlacklisted(snippet)) continue
+
+                                // 4. Paid / rental badge check
                                 val badges = v.optJSONArray("badges")
                                 var isPaid = false
                                 if (badges != null) {
@@ -171,10 +261,13 @@ object OnlineMovieSearchService {
                                 }
                                 if (isPaid) continue
 
-                                // Duration check
+                                // 5. Duration check (>= 65 mins for movies, >= 25 mins for series)
                                 val durText = v.optJSONObject("lengthText")?.optString("simpleText") ?: ""
                                 val durationMins = parseDurationMinutes(durText)
                                 if (durationMins < minMinutesRequired) continue
+
+                                // 6. Query token relevance check
+                                if (!matchesQueryTokens(title, normalized)) continue
 
                                 seenIds.add(vid)
                                 val titleLower = title.lowercase()
@@ -208,11 +301,11 @@ object OnlineMovieSearchService {
             ytConn?.disconnect()
         }
 
-        // 2. Archive.org Full Movie Search (for classic cinema)
+        // 2. Archive.org Full Movie Search (Strictly full feature films >= 250MB)
         var archiveConn: HttpURLConnection? = null
         try {
-            val encodedQuery = URLEncoder.encode("title:($trimmed) AND mediatype:(movies)", "UTF-8")
-            val archiveUrl = URL("https://archive.org/advancedsearch.php?q=$encodedQuery&fl[]=identifier,title,year,description&rows=5&output=json")
+            val encodedQuery = URLEncoder.encode("title:($normalized) AND mediatype:(movies)", "UTF-8")
+            val archiveUrl = URL("https://archive.org/advancedsearch.php?q=$encodedQuery&fl[]=identifier,title,year,description,item_size&rows=8&output=json")
             archiveConn = archiveUrl.openConnection() as HttpURLConnection
             archiveConn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             archiveConn.connectTimeout = 6000
@@ -223,6 +316,8 @@ object OnlineMovieSearchService {
                 val root = JSONObject(jsonText)
                 val docs = root.optJSONObject("response")?.optJSONArray("docs")
 
+                val minItemSize = if (isSeriesQuery) 100_000_000L else 250_000_000L
+
                 if (docs != null) {
                     for (i in 0 until docs.length()) {
                         val doc = docs.getJSONObject(i)
@@ -231,9 +326,14 @@ object OnlineMovieSearchService {
                         val title = unescapeHtml(rawTitle)
                         val year = doc.optInt("year", 1970)
                         val desc = unescapeHtml(doc.optString("description", "Public domain classic video archive."))
+                        val itemSize = doc.optLong("item_size", 0L)
+
+                        // Strict size check eliminates clips, short songs, promos
+                        if (itemSize < minItemSize) continue
 
                         if (id.isNotEmpty() && !seenIds.contains(id)) {
-                            if (isBlacklisted(title)) continue
+                            if (isBlacklisted(title) || isSnippetBlacklisted(desc)) continue
+                            if (!matchesQueryTokens(title, normalized)) continue
 
                             seenIds.add(id)
                             val movie = Movie(
@@ -251,7 +351,7 @@ object OnlineMovieSearchService {
                                 backdropUrl = "https://archive.org/services/img/$id",
                                 videoUrl = "archive:$id",
                                 quality = "720p HD",
-                                fileSizeBytes = 900000000L
+                                fileSizeBytes = if (itemSize > 0L) itemSize else 900000000L
                             )
                             results.add(movie)
                             cacheMovie(movie)

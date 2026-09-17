@@ -171,6 +171,10 @@ class MainActivity : AppCompatActivity() {
         val trimmedQuery = query.trim()
         val allMovies = repository.getAllMovies()
 
+        val normalizedQuery = OnlineMovieSearchService.normalizeSearchQuery(trimmedQuery)
+        val stopWords = OnlineMovieSearchService.STOP_WORDS
+        val queryTokens = normalizedQuery.split(" ").filter { it.length >= 3 && !stopWords.contains(it) }
+
         val localFiltered = allMovies.filter { movie ->
             val matchesFilter = when (activeFilter) {
                 "HINDI" -> movie.language.equals("Hindi", ignoreCase = true)
@@ -179,12 +183,24 @@ class MainActivity : AppCompatActivity() {
                 "NOIR" -> movie.genre.contains("Noir", ignoreCase = true) || movie.genre.contains("Mystery", ignoreCase = true)
                 else -> true
             }
-            val matchesQuery = if (trimmedQuery.isEmpty()) true else {
-                movie.title.contains(trimmedQuery, ignoreCase = true) ||
-                        movie.director.contains(trimmedQuery, ignoreCase = true) ||
-                        movie.cast.any { it.contains(trimmedQuery, ignoreCase = true) }
+            if (!matchesFilter) return@filter false
+
+            if (trimmedQuery.isEmpty()) return@filter true
+
+            val titleNorm = OnlineMovieSearchService.normalizeSearchQuery(movie.title)
+            val synopsisNorm = OnlineMovieSearchService.normalizeSearchQuery(movie.synopsis)
+            val directorNorm = OnlineMovieSearchService.normalizeSearchQuery(movie.director)
+            val genreNorm = OnlineMovieSearchService.normalizeSearchQuery(movie.genre)
+            val castNorm = movie.cast.joinToString(" ") { OnlineMovieSearchService.normalizeSearchQuery(it) }
+            val fullText = "$titleNorm $synopsisNorm $directorNorm $genreNorm $castNorm"
+
+            if (fullText.contains(trimmedQuery.lowercase()) || fullText.contains(normalizedQuery)) {
+                return@filter true
             }
-            matchesFilter && matchesQuery
+            if (queryTokens.isNotEmpty() && queryTokens.all { fullText.contains(it) }) {
+                return@filter true
+            }
+            false
         }
 
         if (trimmedQuery.isNotEmpty() || activeFilter != "ALL") {

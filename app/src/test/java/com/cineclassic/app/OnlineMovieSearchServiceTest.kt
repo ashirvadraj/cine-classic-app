@@ -80,4 +80,55 @@ class OnlineMovieSearchServiceTest {
         val extracted = OnlineMovieSearchService.extractYtInitialData(noDataHtml)
         assertNull(extracted)
     }
+
+    @Test
+    fun testSearchQueryNormalization() {
+        assertEquals("zanjeer 1973 movie", OnlineMovieSearchService.normalizeSearchQuery("zanzeer 1973 mvie"))
+        assertEquals("dilwale dulhania le jayenge", OnlineMovieSearchService.normalizeSearchQuery("dilwale dulhaniya le jyege"))
+        assertEquals("veer zaara", OnlineMovieSearchService.normalizeSearchQuery("veer zara"))
+        assertEquals("dilwale dulhania le jayenge", OnlineMovieSearchService.normalizeSearchQuery("DDLJ"))
+    }
+
+    @Test
+    fun testExpandedBlacklistKeywords() {
+        assertTrue(OnlineMovieSearchService.isBlacklisted("Dilwale Dulhania Le Jayenge Explanation & Analysis"))
+        assertTrue(OnlineMovieSearchService.isBlacklisted("Veer Zaara Review & Facts"))
+        assertTrue(OnlineMovieSearchService.isBlacklisted("Veer Zaara Facts & Ditels"))
+        assertTrue(OnlineMovieSearchService.isBlacklisted("Veer Zaara Movie Story Explained"))
+        assertTrue(OnlineMovieSearchService.isBlacklisted("Veer Zaara Full Movie All Songs Jukebox"))
+        assertTrue(OnlineMovieSearchService.isBlacklisted("Shiva Hero Veer Zara Shorts"))
+        assertTrue(OnlineMovieSearchService.isBlacklisted("Zanjeer 1973 Full Story & Breakdown"))
+    }
+
+    @Test
+    fun testChannelBlacklist() {
+        assertTrue(OnlineMovieSearchService.isChannelBlacklisted("TS MUVIES REVIEWS"))
+        assertTrue(OnlineMovieSearchService.isChannelBlacklisted("Old Is Gold Movie Explainer"))
+        assertTrue(OnlineMovieSearchService.isChannelBlacklisted("Best Of Bollywood's Music"))
+        assertTrue(OnlineMovieSearchService.isChannelBlacklisted("Film Ki Factory"))
+        assertTrue(OnlineMovieSearchService.isChannelBlacklisted("Subhajit Textile"))
+        assertFalse(OnlineMovieSearchService.isChannelBlacklisted("Goldmines Bollywood"))
+        assertFalse(OnlineMovieSearchService.isChannelBlacklisted("Shemaroo Movies"))
+    }
+
+    @Test
+    fun testSnippetBlacklist() {
+        assertTrue(OnlineMovieSearchService.isSnippetBlacklisted("Note:- This is not a full movie this is just a review"))
+        assertTrue(OnlineMovieSearchService.isSnippetBlacklisted("#VeerZaaraReview #SRKMovies #BollywoodReview"))
+        assertTrue(OnlineMovieSearchService.isSnippetBlacklisted("In today's video we revisit the classic movie"))
+        assertFalse(OnlineMovieSearchService.isSnippetBlacklisted("Watch complete restored print in high definition ad-free"))
+    }
+
+    @Test
+    fun testMatchesQueryTokens() {
+        // Query 'veer zaara' should match 'Veer Zaara 2004 Full Movie'
+        assertTrue(OnlineMovieSearchService.matchesQueryTokens("Veer Zaara 2004 Full Movie", "veer zara"))
+        assertTrue(OnlineMovieSearchService.matchesQueryTokens("Veer-Zaara (2004)", "veer zara"))
+
+        // Query 'veer zaara' should NOT match Salman Khan's 'Veer (2010)'
+        assertFalse(OnlineMovieSearchService.matchesQueryTokens("Veer (2010) Salman Khan Full Hindi Movie", "veer zara"))
+
+        // Query 'dilwale dulhania le jayenge' should NOT match Ajay Devgn's 'Dilwale (1994)'
+        assertFalse(OnlineMovieSearchService.matchesQueryTokens("Dilwale (HD) (1994) Full Hindi Movie", "dilwale dulhaniya le jyege"))
+    }
 }
