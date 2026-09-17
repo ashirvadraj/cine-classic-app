@@ -34,12 +34,20 @@ CineClassic is a high-performance, ad-free Android application dedicated to gold
 
 ---
 
+- **Google Voice Search**: Instant voice search with mic input to search any movie or series hands-free.
+- **Dynamic Online Movie Search**: Search any classic Bollywood or Hollywood movie (e.g. *Zanjeer*, *Don*, *Sholay*) or web series.
+- **Anti-Fake & Anti-Paywall Filters**: Enforces full-length feature duration (>= 40 mins) to eliminate fake reviews, reactions, trailers, and clips, while filtering out paid rental barriers.
+- **Live Download Progress Tracking**: Real-time download percentage and MB downloaded vs total MB directly in the UI and notifications.
+- **Dual Playback Engine**: Zero-buffering player with automatic fallback streams and offline local playback.
+
+---
+
 ## 🚀 Direct APK Download
 
-You can find the pre-compiled APK directly inside the repository under [`apk/cineclassic-v1.0.apk`](apk/cineclassic-v1.0.apk) or in the [GitHub Releases](../../releases).
+You can find the latest pre-compiled APK directly inside the repository under [`apk/cineclassic-v1.2.0.apk`](apk/cineclassic-v1.2.0.apk) or in the [GitHub Releases](../../releases).
 
 ### How to Install on Android
-1. Download `cineclassic-v1.0.apk` onto your Android phone.
+1. Download `cineclassic-v1.2.0.apk` onto your Android phone.
 2. Tap the APK to install.
 3. If prompted, allow "Install from unknown sources" for your file manager or browser.
 4. Launch **CineClassic** and enjoy classic cinema ad-free!
@@ -57,7 +65,7 @@ cd cine-classic-app
 ./gradlew assembleDebug
 
 # Output APK location:
-# app/build/outputs/apk/debug/app-debug.apk
+# app/build/outputs/apk/debug/cineclassic-v1.2.0.apk
 ```
 
 ---
