@@ -196,6 +196,14 @@ class DownloadManagerHelper(private val context: Context) {
             }
         }
 
+        // Resolve YouTube streams to direct downloadable MP4 URL
+        if (streamUrl.startsWith("youtube:") || streamUrl.contains("youtube.com") || streamUrl.contains("youtu.be")) {
+            val resolved = YouTubeStreamResolver.resolveMp4StreamUrl(streamUrl)
+            if (resolved != null) {
+                streamUrl = resolved
+            }
+        }
+
         if (!streamUrl.startsWith("http://") && !streamUrl.startsWith("https://")) {
             return@withContext -2L
         }

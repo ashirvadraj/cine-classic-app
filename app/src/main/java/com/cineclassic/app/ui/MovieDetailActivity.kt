@@ -75,14 +75,9 @@ class MovieDetailActivity : AppCompatActivity() {
         updateWatchlistIcon(movie.id)
         startMonitoringProgress(movie)
 
-        // Show/hide Download button based on whether the movie can be downloaded
-        if (movie.isYouTubeStream) {
-            binding.btnDownloadMovie.visibility = View.GONE
-            // YouTube streams: show a "Stream Only" note next to play button
-            binding.btnPlayMovie.text = "▶ Watch (Stream Only)"
-        } else {
-            binding.btnDownloadMovie.visibility = View.VISIBLE
-        }
+        // All movies including YouTube movies can now be downloaded offline
+        binding.btnDownloadMovie.visibility = View.VISIBLE
+        binding.btnPlayMovie.text = "Watch Ad-Free"
 
         binding.btnBack.setOnClickListener { finish() }
 
@@ -106,22 +101,29 @@ class MovieDetailActivity : AppCompatActivity() {
                 val progress = downloadHelper.getDownloadProgress(movie.id)
                 when (progress.state) {
                     DownloadManagerHelper.DownloadState.DOWNLOADED -> {
-                        Toast.makeText(this@MovieDetailActivity, "Movie already downloaded! Tap 'Watch Ad-Free' to play offline.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MovieDetailActivity, "Movie already downloaded! Tap 'Watch Offline' to play.", Toast.LENGTH_SHORT).show()
                     }
                     DownloadManagerHelper.DownloadState.DOWNLOADING -> {
                         Toast.makeText(this@MovieDetailActivity, "Download already in progress (${progress.progressPercent}%)", Toast.LENGTH_SHORT).show()
                     }
                     DownloadManagerHelper.DownloadState.NOT_DOWNLOADED -> {
                         binding.btnDownloadMovie.isEnabled = false
+                        binding.btnDownloadMovie.text = "Preparing..."
+                        val isYt = movie.isYouTubeStream || movie.videoUrl.contains("youtube")
+                        if (isYt) {
+                            Toast.makeText(this@MovieDetailActivity, "Resolving HD stream for ${movie.title}...", Toast.LENGTH_SHORT).show()
+                        }
                         val downloadId = downloadHelper.startDownload(movie)
                         binding.btnDownloadMovie.isEnabled = true
                         if (downloadId == -2L) {
+                            binding.btnDownloadMovie.text = "Download"
                             Toast.makeText(
                                 this@MovieDetailActivity,
-                                "Direct offline download is not supported for YouTube streams. Please stream online.",
+                                "Unable to prepare offline stream for this video. Please try again or stream online.",
                                 Toast.LENGTH_LONG
                             ).show()
                         } else if (downloadId == -1L) {
+                            binding.btnDownloadMovie.text = "Download"
                             Toast.makeText(this@MovieDetailActivity, "Failed to start download.", Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(this@MovieDetailActivity, "Starting download for ${movie.title}...", Toast.LENGTH_SHORT).show()
@@ -134,9 +136,6 @@ class MovieDetailActivity : AppCompatActivity() {
     }
 
     private fun startMonitoringProgress(movie: Movie) {
-        // YouTube streams cannot be downloaded — no progress to monitor
-        if (movie.isYouTubeStream) return
-
         progressJob?.cancel()
         progressJob = lifecycleScope.launch {
             while (isActive) {
