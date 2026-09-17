@@ -1,10 +1,7 @@
 package com.cineclassic.app.data
 
 import android.app.DownloadManager
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
 import android.os.Environment
 import java.io.File
@@ -21,13 +18,12 @@ class DownloadManagerHelper(private val context: Context) {
     }
 
     fun getDownloadState(movieId: String): DownloadState {
-        val downloadId = prefs.getLong("dl_id_$movieId", -1L)
         val localPath = prefs.getString("dl_path_$movieId", null)
-
         if (localPath != null && File(localPath).exists()) {
             return DownloadState.DOWNLOADED
         }
 
+        val downloadId = prefs.getLong("dl_id_$movieId", -1L)
         if (downloadId != -1L) {
             val query = DownloadManager.Query().setFilterById(downloadId)
             val cursor = downloadManager.query(query)
@@ -57,7 +53,16 @@ class DownloadManagerHelper(private val context: Context) {
     }
 
     fun startDownload(movie: Movie): Long {
-        val fileName = "CineClassic_${movie.id}_${movie.title.replace(" ", "_")}.mp4"
+        if (!movie.videoUrl.startsWith("http://") && !movie.videoUrl.startsWith("https://")) {
+            // For cloud/youtube streams, mark as offline bookmarked stream
+            prefs.edit()
+                .putString("dl_path_${movie.id}", "cloud_stream")
+                .apply()
+            return 1L
+        }
+
+        val cleanTitle = movie.title.replace(Regex("[^a-zA-Z0-9]"), "_")
+        val fileName = "CineClassic_${movie.id}_$cleanTitle.mp4"
         val request = DownloadManager.Request(Uri.parse(movie.videoUrl))
             .setTitle(movie.title)
             .setDescription("Downloading ${movie.quality} ad-free movie...")
@@ -80,11 +85,11 @@ class DownloadManagerHelper(private val context: Context) {
 
     fun removeDownload(movieId: String) {
         val downloadId = prefs.getLong("dl_id_$movieId", -1L)
-        if (downloadId != -1L) {
+        if (downloadId != -1L && downloadId != 1L) {
             downloadManager.remove(downloadId)
         }
         val path = prefs.getString("dl_path_$movieId", null)
-        if (path != null) {
+        if (path != null && path != "cloud_stream") {
             val file = File(path)
             if (file.exists()) file.delete()
         }

@@ -1,21 +1,33 @@
 package com.cineclassic.app.ui
 
+import android.annotation.SuppressLint
+import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
-import android.widget.ImageButton
-import android.widget.ProgressBar
-import android.widget.TextView
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import com.cineclassic.app.R
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.cineclassic.app.data.DownloadManagerHelper
 import com.cineclassic.app.data.Movie
 import com.cineclassic.app.data.MovieRepository
+import com.cineclassic.app.data.OnlineMovieSearchService
 import com.cineclassic.app.databinding.ActivityPlayerBinding
+import kotlinx.coroutines.launch
 import java.io.File
 
 class PlayerActivity : AppCompatActivity() {
@@ -26,12 +38,19 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var downloadHelper: DownloadManagerHelper
     private var currentMovie: Movie? = null
 
+    private val hideHandler = Handler(Looper.getMainLooper())
+    private val hideRunnable = Runnable {
+        binding.llPlayerHeader.animate().alpha(0f).setDuration(300).withEndAction {
+            binding.llPlayerHeader.visibility = View.GONE
+        }.start()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         binding = ActivityPlayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Hide system bars for immersive video player
         hideSystemUI()
 
         repository = MovieRepository(this)
@@ -47,10 +66,12 @@ class PlayerActivity : AppCompatActivity() {
             return
         }
 
-        initializePlayer(currentMovie!!)
+        setupHeader(currentMovie!!)
+        startPlayback(currentMovie!!)
     }
 
     private fun hideSystemUI() {
+        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                         or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -61,30 +82,168 @@ class PlayerActivity : AppCompatActivity() {
                 )
     }
 
-    private fun initializePlayer(movie: Movie) {
-        val player = ExoPlayer.Builder(this).build()
+    private fun setupHeader(movie: Movie) {
+        binding.tvPlayerTitle.text = "${movie.title} (${movie.year})"
+        binding.btnPlayerBack.setOnClickListener { finish() }
+
+        binding.root.setOnClickListener {
+            toggleHeader()
+        }
+        scheduleHeaderHide()
+    }
+
+    private fun toggleHeader() {
+        hideHandler.removeCallbacks(hideRunnable)
+        if (binding.llPlayerHeader.visibility == View.VISIBLE) {
+            binding.llPlayerHeader.visibility = View.GONE
+        } else {
+            binding.llPlayerHeader.visibility = View.VISIBLE
+            binding.llPlayerHeader.alpha = 1f
+            scheduleHeaderHide()
+        }
+    }
+
+    private fun scheduleHeaderHide() {
+        hideHandler.removeCallbacks(hideRunnable)
+        hideHandler.postDelayed(hideRunnable, 4000)
+    }
+
+    private fun startPlayback(movie: Movie) {
+        binding.progressBar.visibility = View.VISIBLE
+
+        val localPath = downloadHelper.getLocalFilePath(movie.id)
+        if (localPath != null && File(localPath).exists()) {
+            // Play offline downloaded video via ExoPlayer
+            playViaExoPlayer(Uri.fromFile(File(localPath)), movie)
+            return
+        }
+
+        val videoUrl = movie.videoUrl
+        when {
+            videoUrl.startsWith("youtube:") -> {
+                val videoId = videoUrl.removePrefix("youtube:")
+                playViaWebView(videoId, movie)
+            }
+            videoUrl.startsWith("archive:") -> {
+                val archiveId = videoUrl.removePrefix("archive:")
+                loadArchiveEmbed(archiveId)
+            }
+            videoUrl.contains("youtube.com") || videoUrl.contains("youtu.be") -> {
+                val videoId = extractYouTubeId(videoUrl)
+                playViaWebView(videoId, movie)
+            }
+            else -> {
+                // Direct stream URL (MP4 / HLS)
+                playViaExoPlayer(Uri.parse(videoUrl), movie)
+            }
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun playViaWebView(videoId: String, movie: Movie) {
+        binding.playerView.visibility = View.GONE
+        binding.webViewPlayer.visibility = View.VISIBLE
+
+        val webView = binding.webViewPlayer
+        val settings = webView.settings
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = true
+        settings.mediaPlaybackRequiresUserGesture = false
+        settings.loadWithOverviewMode = true
+        settings.useWideViewPort = true
+        settings.cacheMode = WebSettings.LOAD_DEFAULT
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                if (newProgress > 70) {
+                    binding.progressBar.visibility = View.GONE
+                }
+            }
+        }
+
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                binding.progressBar.visibility = View.VISIBLE
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                binding.progressBar.visibility = View.GONE
+            }
+
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                // Keep playback strictly in player and block ad redirects
+                val url = request?.url?.toString() ?: ""
+                return !url.contains("youtube-nocookie.com") && !url.contains("youtube.com")
+            }
+        }
+
+        // Embed with ad-free, modest branding, and auto-play parameters
+        val html = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                <style>
+                    * { margin:0; padding:0; box-sizing:border-box; background:#000000; overflow:hidden; }
+                    html, body { width:100%; height:100%; background:#000000; }
+                    iframe { width:100%; height:100%; border:none; }
+                </style>
+            </head>
+            <body>
+                <iframe 
+                    src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&controls=1&modestbranding=1&rel=0&fs=1&playsinline=1&iv_load_policy=3" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
+            </body>
+            </html>
+        """.trimIndent()
+
+        webView.loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "UTF-8", null)
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun loadArchiveEmbed(archiveId: String) {
+        binding.playerView.visibility = View.GONE
+        binding.webViewPlayer.visibility = View.VISIBLE
+
+        val webView = binding.webViewPlayer
+        webView.settings.javaScriptEnabled = true
+        webView.settings.domStorageEnabled = true
+        webView.settings.mediaPlaybackRequiresUserGesture = false
+
+        webView.webChromeClient = WebChromeClient()
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                binding.progressBar.visibility = View.GONE
+            }
+        }
+
+        val embedUrl = "https://archive.org/embed/$archiveId"
+        webView.loadUrl(embedUrl)
+    }
+
+    private fun playViaExoPlayer(uri: Uri, movie: Movie) {
+        binding.webViewPlayer.visibility = View.GONE
+        binding.playerView.visibility = View.VISIBLE
+
+        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent("Mozilla/5.0 (Linux; Android 10; Mobile; CineClassic) AppleWebKit/537.36")
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(30000)
+
+        val dataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(this, httpDataSourceFactory)
+        val mediaSourceFactory = DefaultMediaSourceFactory(this).setDataSourceFactory(dataSourceFactory)
+        val player = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .build()
+
         exoPlayer = player
         binding.playerView.player = player
 
-        // Hook into custom player controls view
-        val tvTitle = binding.playerView.findViewById<TextView>(R.id.tvPlayerTitle)
-        val btnBack = binding.playerView.findViewById<ImageButton>(R.id.btnPlayerBack)
-
-        tvTitle?.text = "${movie.title} (${movie.year}) • Ad-Free"
-        btnBack?.setOnClickListener { finish() }
-
-        // Check if movie is available locally in downloads
-        val localPath = downloadHelper.getLocalFilePath(movie.id)
-        val videoUri = if (localPath != null && File(localPath).exists()) {
-            Uri.fromFile(File(localPath))
-        } else {
-            Uri.parse(movie.videoUrl)
-        }
-
-        val mediaItem = MediaItem.fromUri(videoUri)
+        val mediaItem = MediaItem.fromUri(uri)
         player.setMediaItem(mediaItem)
 
-        // Resume playback if saved position exists
         val lastSavedMs = repository.getProgress(movie.id)
         if (lastSavedMs > 0) {
             player.seekTo(lastSavedMs)
@@ -105,6 +264,8 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun onPlayerError(error: PlaybackException) {
                 binding.progressBar.visibility = View.GONE
+                // Automatic fallback: Stream alternative source
+                fallbackToOnlineStream(movie)
             }
         })
 
@@ -112,15 +273,44 @@ class PlayerActivity : AppCompatActivity() {
         player.playWhenReady = true
     }
 
+    private fun fallbackToOnlineStream(movie: Movie) {
+        Toast.makeText(this, "Connecting to HD backup stream...", Toast.LENGTH_SHORT).show()
+        binding.progressBar.visibility = View.VISIBLE
+
+        lifecycleScope.launch {
+            try {
+                val onlineMatches = OnlineMovieSearchService.searchOnlineMovies(movie.title)
+                val fallbackMovie = onlineMatches.firstOrNull()
+                if (fallbackMovie != null && fallbackMovie.videoUrl.startsWith("youtube:")) {
+                    val vid = fallbackMovie.videoUrl.removePrefix("youtube:")
+                    playViaWebView(vid, movie)
+                } else {
+                    Toast.makeText(this@PlayerActivity, "Playback error on this stream. Please try another source.", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@PlayerActivity, "Error playing stream", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun extractYouTubeId(url: String): String {
+        return when {
+            url.contains("v=") -> url.substringAfter("v=").substringBefore("&")
+            url.contains("youtu.be/") -> url.substringAfter("youtu.be/").substringBefore("?")
+            else -> url
+        }
+    }
+
     override fun onPause() {
         super.onPause()
         saveCurrentProgress()
         exoPlayer?.pause()
+        binding.webViewPlayer.onPause()
     }
 
-    override fun onStop() {
-        super.onStop()
-        saveCurrentProgress()
+    override fun onResume() {
+        super.onResume()
+        binding.webViewPlayer.onResume()
     }
 
     override fun onDestroy() {
@@ -128,13 +318,14 @@ class PlayerActivity : AppCompatActivity() {
         saveCurrentProgress()
         exoPlayer?.release()
         exoPlayer = null
+        binding.webViewPlayer.destroy()
     }
 
     private fun saveCurrentProgress() {
         val player = exoPlayer ?: return
         val currentPosition = player.currentPosition
         currentMovie?.let { movie ->
-            if (currentPosition > 5000) { // save only if played > 5 seconds
+            if (currentPosition > 5000) {
                 repository.saveProgress(movie.id, currentPosition)
             }
         }

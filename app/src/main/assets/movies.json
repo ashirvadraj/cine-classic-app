@@ -1,5 +1,22 @@
 [
   {
+    "id": "hindi_zanjeer",
+    "title": "Zanjeer",
+    "year": 1973,
+    "language": "Hindi",
+    "genre": "Action / Crime / Drama",
+    "duration": "2h 25m",
+    "director": "Prakash Mehra",
+    "cast": ["Amitabh Bachchan", "Jaya Bhaduri", "Pran", "Ajit"],
+    "synopsis": "An honest, uncompromising police inspector Vijay Khanna takes on the ruthless underworld don Teja, who brutally murdered his parents during his childhood. The legendary film that created the Angry Young Man persona.",
+    "rating": "7.5/10",
+    "posterUrl": "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80",
+    "backdropUrl": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=1200&q=80",
+    "videoUrl": "youtube:2C39kNq89E4",
+    "quality": "1080p Full HD",
+    "fileSizeBytes": 1500000000
+  },
+  {
     "id": "hindi_01",
     "title": "Awara",
     "year": 1951,
@@ -12,7 +29,7 @@
     "rating": "8.0/10",
     "posterUrl": "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/Awaara1951_201703/Awaara.mp4",
+    "videoUrl": "youtube:V88h_NvPIKU",
     "quality": "1080p Remastered",
     "fileSizeBytes": 1450000000
   },
@@ -29,7 +46,7 @@
     "rating": "8.1/10",
     "posterUrl": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1574267432553-4b4628081c31?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/MotherIndia1957Hindi/Mother%20India%201957%20Hindi.mp4",
+    "videoUrl": "youtube:5J-TwuoKxVs",
     "quality": "720p HD",
     "fileSizeBytes": 1280000000
   },
@@ -46,7 +63,7 @@
     "rating": "8.3/10",
     "posterUrl": "https://images.unsplash.com/photo-1509281373149-e957c6296406?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/DoBighaZamin1953/Do%20Bigha%20Zamin.mp4",
+    "videoUrl": "youtube:_a5cZ6OkgmA",
     "quality": "720p HD",
     "fileSizeBytes": 950000000
   },
@@ -63,7 +80,7 @@
     "rating": "8.4/10",
     "posterUrl": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/Pyaasa1957_GuruDutt/Pyaasa_1957.mp4",
+    "videoUrl": "youtube:WJK45r-j6TU",
     "quality": "1080p HD",
     "fileSizeBytes": 1150000000
   },
@@ -80,7 +97,7 @@
     "rating": "8.0/10",
     "posterUrl": "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/Devdas1955_Hindi/Devdas.mp4",
+    "videoUrl": "youtube:2r9QHR2L3_8",
     "quality": "720p HD",
     "fileSizeBytes": 1050000000
   },
@@ -97,7 +114,7 @@
     "rating": "8.0/10",
     "posterUrl": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1574267432553-4b4628081c31?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/Shree420_1955/Shree_420.mp4",
+    "videoUrl": "youtube:qu8ShpSlFX0",
     "quality": "720p HD",
     "fileSizeBytes": 1200000000
   },
@@ -114,7 +131,7 @@
     "rating": "7.9/10",
     "posterUrl": "https://images.unsplash.com/photo-1509281373149-e957c6296406?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/night_of_the_living_dead/night_of_the_living_dead.mp4",
+    "videoUrl": "youtube:H91BxkBXttE",
     "quality": "1080p Remastered",
     "fileSizeBytes": 890000000
   },
@@ -126,12 +143,12 @@
     "genre": "Romantic Mystery",
     "duration": "1h 53m",
     "director": "Stanley Donen",
-    "cast": ["Cary Grant", "Audrey Hepburn", "Walter Matthau", "James Coburn"],
+    "cast": ["Cary Grant", "Audrey Hepburn", "Walter Matthau"],
     "synopsis": "In Paris, a glamorous widow is pursued by several ruthless men who want a fortune stolen by her murdered husband. She is aided by a charming stranger whose identity changes repeatedly.",
     "rating": "7.9/10",
     "posterUrl": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/Charade_1963/Charade.mp4",
+    "videoUrl": "youtube:VhGNhwOtbVs",
     "quality": "1080p HD",
     "fileSizeBytes": 980000000
   },
@@ -148,7 +165,7 @@
     "rating": "7.8/10",
     "posterUrl": "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/his_girl_friday/his_girl_friday.mp4",
+    "videoUrl": "youtube:BBa_OHGmOPs",
     "quality": "1080p HD",
     "fileSizeBytes": 750000000
   },
@@ -165,7 +182,7 @@
     "rating": "7.4/10",
     "posterUrl": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1574267432553-4b4628081c31?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/TheStranger1946_Welles/TheStranger.mp4",
+    "videoUrl": "youtube:Q-iglYhLl-8",
     "quality": "720p HD",
     "fileSizeBytes": 820000000
   },
@@ -182,7 +199,7 @@
     "rating": "7.5/10",
     "posterUrl": "https://images.unsplash.com/photo-1509281373149-e957c6296406?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/AStarIsBorn1937_Technicolor/AStarIsBorn.mp4",
+    "videoUrl": "youtube:mAVEaMMQffA",
     "quality": "1080p HD",
     "fileSizeBytes": 910000000
   },
@@ -199,7 +216,7 @@
     "rating": "7.1/10",
     "posterUrl": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=500&q=80",
     "backdropUrl": "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/GulliversTravels1939_Color/GulliversTravels.mp4",
+    "videoUrl": "youtube:rehNT9wIjUg",
     "quality": "1080p HD",
     "fileSizeBytes": 680000000
   }

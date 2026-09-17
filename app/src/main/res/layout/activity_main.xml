@@ -67,23 +67,24 @@
             </LinearLayout>
         </androidx.appcompat.widget.Toolbar>
 
-        <!-- Search Bar -->
+        <!-- Search Bar with Google Voice Search -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
-            android:layout_height="46dp"
+            android:layout_height="48dp"
             android:layout_marginHorizontal="16dp"
             android:layout_marginTop="4dp"
             android:layout_marginBottom="10dp"
             app:cardBackgroundColor="@color/surface_dark"
-            app:cardCornerRadius="23dp"
-            app:cardElevation="0dp">
+            app:cardCornerRadius="24dp"
+            app:cardElevation="2dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingHorizontal="14dp">
+                android:paddingStart="14dp"
+                android:paddingEnd="6dp">
 
                 <ImageView
                     android:layout_width="20dp"
@@ -92,9 +93,11 @@
 
                 <EditText
                     android:id="@+id/etSearch"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_marginStart="10dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
                     android:background="@null"
                     android:hint="@string/search_hint"
                     android:imeOptions="actionSearch"
@@ -103,6 +106,15 @@
                     android:textColor="@color/text_primary"
                     android:textColorHint="@color/text_muted"
                     android:textSize="14sp" />
+
+                <!-- Google Voice Search Icon -->
+                <ImageButton
+                    android:id="@+id/btnVoiceSearch"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Google Voice Search"
+                    android:src="@drawable/ic_mic" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -249,7 +261,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="6dp"
-                            android:text="Awara (1951)"
+                            android:text="Zanjeer (1973)"
                             android:textColor="@color/text_primary"
                             android:textSize="20sp"
                             android:textStyle="bold" />
@@ -261,7 +273,7 @@
                             android:layout_marginTop="2dp"
                             android:ellipsize="end"
                             android:maxLines="2"
-                            android:text="Raj Kapoor • Nargis • Directed by Raj Kapoor • Cannes Nominated"
+                            android:text="Amitabh Bachchan • Jaya Bhaduri • Pran • Directed by Prakash Mehra"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
 
@@ -298,6 +310,32 @@
                     </LinearLayout>
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </androidx.cardview.widget.CardView>
+
+            <!-- Online Search Progress Header -->
+            <LinearLayout
+                android:id="@+id/llSearchProgress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:indeterminateTint="@color/primary" />
+
+                <TextView
+                    android:id="@+id/tvSearchStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="Searching online streaming catalog..."
+                    android:textColor="@color/accent_gold"
+                    android:textSize="13sp" />
+            </LinearLayout>
 
             <!-- Search Results Grid (Visible when searching) -->
             <androidx.recyclerview.widget.RecyclerView

@@ -1,19 +1,28 @@
 package com.cineclassic.app.ui
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.speech.RecognizerIntent
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.cineclassic.app.R
 import com.cineclassic.app.data.Movie
 import com.cineclassic.app.data.MovieRepository
+import com.cineclassic.app.data.OnlineMovieSearchService
 import com.cineclassic.app.databinding.ActivityMainBinding
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -22,6 +31,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var searchAdapter: MovieAdapter
 
     private var activeFilter = "ALL"
+    private var onlineSearchJob: Job? = null
+
+    private val voiceSearchLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!spokenText.isNullOrBlank()) {
+                binding.etSearch.setText(spokenText)
+                binding.etSearch.setSelection(spokenText.length)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         setupHeroBanner()
         setupCategorySections()
         setupSearch()
+        setupVoiceSearch()
         setupFilters()
         setupNavigation()
     }
@@ -70,10 +93,11 @@ class MainActivity : AppCompatActivity() {
         val allMovies = repository.getAllMovies()
 
         val sections = listOf(
+            CategorySection("Trending Classic Cinema", allMovies),
             CategorySection("Classic Bollywood (Golden Era)", hindiMovies),
             CategorySection("Vintage Hollywood Masterpieces", englishMovies),
-            CategorySection("Critically Acclaimed Cinema", allMovies.sortedByDescending { it.rating }),
-            CategorySection("Drama & Romance Classics", allMovies.filter { it.genre.contains("Drama") || it.genre.contains("Romance") })
+            CategorySection("Action & Crime Classics", allMovies.filter { it.genre.contains("Action", ignoreCase = true) || it.genre.contains("Crime", ignoreCase = true) }),
+            CategorySection("Drama & Romance Classics", allMovies.filter { it.genre.contains("Drama", ignoreCase = true) || it.genre.contains("Romance", ignoreCase = true) })
         )
 
         binding.llCategories.removeAllViews()
@@ -107,6 +131,20 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    private fun setupVoiceSearch() {
+        binding.btnVoiceSearch.setOnClickListener {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Say any movie or series name (e.g. Zanjeer, Sholay, Charade)...")
+            }
+            try {
+                voiceSearchLauncher.launch(intent)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Google Voice Search is not available on this device", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun setupFilters() {
         val chips = listOf(
             binding.chipAll to "ALL",
@@ -131,7 +169,7 @@ class MainActivity : AppCompatActivity() {
         val trimmedQuery = query.trim()
         val allMovies = repository.getAllMovies()
 
-        val filtered = allMovies.filter { movie ->
+        val localFiltered = allMovies.filter { movie ->
             val matchesFilter = when (activeFilter) {
                 "HINDI" -> movie.language.equals("Hindi", ignoreCase = true)
                 "ENGLISH" -> movie.language.equals("English", ignoreCase = true)
@@ -151,11 +189,42 @@ class MainActivity : AppCompatActivity() {
             binding.cardHero.visibility = View.GONE
             binding.llCategories.visibility = View.GONE
             binding.rvSearchResults.visibility = View.VISIBLE
-            searchAdapter.updateMovies(filtered)
+            searchAdapter.updateMovies(localFiltered)
+
+            // Asynchronous Online Search for any movie/webseries
+            if (trimmedQuery.length >= 2) {
+                triggerOnlineSearch(trimmedQuery, localFiltered)
+            } else {
+                binding.llSearchProgress.visibility = View.GONE
+            }
         } else {
             binding.cardHero.visibility = View.VISIBLE
             binding.llCategories.visibility = View.VISIBLE
             binding.rvSearchResults.visibility = View.GONE
+            binding.llSearchProgress.visibility = View.GONE
+        }
+    }
+
+    private fun triggerOnlineSearch(query: String, localResults: List<Movie>) {
+        onlineSearchJob?.cancel()
+        binding.llSearchProgress.visibility = View.VISIBLE
+        binding.tvSearchStatus.text = "Searching online catalog for \"$query\"..."
+
+        onlineSearchJob = lifecycleScope.launch {
+            delay(400) // Debounce typing
+            try {
+                val onlineResults = OnlineMovieSearchService.searchOnlineMovies(query)
+                val combined = ArrayList(localResults)
+                onlineResults.forEach { onlineMovie ->
+                    if (combined.none { it.id == onlineMovie.id || it.title.equals(onlineMovie.title, ignoreCase = true) }) {
+                        combined.add(onlineMovie)
+                    }
+                }
+                searchAdapter.updateMovies(combined)
+                binding.llSearchProgress.visibility = View.GONE
+            } catch (e: Exception) {
+                binding.llSearchProgress.visibility = View.GONE
+            }
         }
     }
 

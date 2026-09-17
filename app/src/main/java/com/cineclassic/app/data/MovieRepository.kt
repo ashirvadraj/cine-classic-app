@@ -26,7 +26,7 @@ class MovieRepository(private val context: Context) {
     }
 
     fun getMovieById(id: String): Movie? {
-        return getAllMovies().find { it.id == id }
+        return getAllMovies().find { it.id == id } ?: OnlineMovieSearchService.getCachedMovie(id)
     }
 
     fun getHindiMovies(): List<Movie> {
@@ -37,7 +37,7 @@ class MovieRepository(private val context: Context) {
         return getAllMovies().filter { it.language.equals("English", ignoreCase = true) }
     }
 
-    fun searchMovies(query: String, filterLanguage: String = "ALL"): List<Movie> {
+    fun searchLocalMovies(query: String, filterLanguage: String = "ALL"): List<Movie> {
         val q = query.trim().lowercase()
         return getAllMovies().filter { movie ->
             val matchesLang = when (filterLanguage.uppercase()) {
@@ -76,7 +76,13 @@ class MovieRepository(private val context: Context) {
 
     fun getWatchlistMovies(): List<Movie> {
         val set = prefs.getStringSet("watchlist_ids", emptySet()) ?: emptySet()
-        return getAllMovies().filter { set.contains(it.id) }
+        val all = getAllMovies().toMutableList()
+        set.forEach { id ->
+            if (all.none { it.id == id }) {
+                OnlineMovieSearchService.getCachedMovie(id)?.let { all.add(it) }
+            }
+        }
+        return all.filter { set.contains(it.id) }
     }
 
     // Playback Progress
