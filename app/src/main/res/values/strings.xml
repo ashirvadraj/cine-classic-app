@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">CineClassic</string>
+    <string name="tagline">Classic Cinema • 100% Ad-Free • HD Streaming &amp; Downloads</string>
+    <string name="hindi_movies">Classic Bollywood</string>
+    <string name="english_movies">Vintage Hollywood</string>
+    <string name="all_movies">All Classics</string>
+    <string name="search_hint">Search title, director, or actor...</string>
+    <string name="downloads">Downloads</string>
+    <string name="watchlist">Watchlist</string>
+    <string name="play_now">Watch Now</string>
+    <string name="download">Download</string>
+    <string name="downloading">Downloading...</string>
+    <string name="downloaded">Downloaded</string>
+    <string name="remove">Remove</string>
+</resources>
