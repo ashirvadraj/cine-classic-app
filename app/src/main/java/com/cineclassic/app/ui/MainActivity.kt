@@ -64,7 +64,7 @@ class MainActivity : AppCompatActivity() {
         val movies = repository.getAllMovies()
         val featured = movies.firstOrNull() ?: return
 
-        binding.tvHeroTitle.text = "${featured.title} (${featured.year})"
+        binding.tvHeroTitle.text = featured.displayTitleWithYear
         binding.tvHeroDesc.text = "${featured.director} • ${featured.castFormatted}"
 
         Glide.with(this)

@@ -54,7 +54,11 @@ class OnlineMovieSearchServiceTest {
         assertEquals(1973, OnlineMovieSearchService.extractYear("Zanjeer (1973) Full HD Movie"))
         assertEquals(2013, OnlineMovieSearchService.extractYear("Zanjeer 2013 Ram Charan Action"))
         assertEquals(1951, OnlineMovieSearchService.extractYear("Awara (1951) Raj Kapoor Classic"))
-        assertEquals(1975, OnlineMovieSearchService.extractYear("Undated Classic Cinema"))
+        assertEquals(2013, OnlineMovieSearchService.extractYear("The Lunchbox Irrfan Khan"))
+        assertEquals(1995, OnlineMovieSearchService.extractYear("Dilwale Dulhania Le Jayenge"))
+        assertEquals(2004, OnlineMovieSearchService.extractYear("Veer Zaara"))
+        assertEquals(1975, OnlineMovieSearchService.extractYear("Sholay"))
+        assertEquals(0, OnlineMovieSearchService.extractYear("Undated Classic Cinema"))
     }
 
     @Test

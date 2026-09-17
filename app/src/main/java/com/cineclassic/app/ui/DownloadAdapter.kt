@@ -43,7 +43,7 @@ class DownloadAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(movie: Movie) {
-            binding.tvDownloadTitle.text = "${movie.title} (${movie.year})"
+            binding.tvDownloadTitle.text = movie.displayTitleWithYear
             val info = getProgressInfo(movie)
 
             if (info.state == DownloadManagerHelper.DownloadState.DOWNLOADING) {

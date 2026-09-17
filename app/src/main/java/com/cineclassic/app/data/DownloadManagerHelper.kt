@@ -35,22 +35,6 @@ class DownloadManagerHelper(private val context: Context) {
             return DownloadProgressInfo(DownloadState.DOWNLOADED, f.length(), f.length(), 100)
         }
 
-        // Check cloud stream saved
-        val isCloudSaved = prefs.getBoolean("dl_cloud_done_$movieId", false)
-        if (isCloudSaved) {
-            val total = prefs.getLong("dl_total_bytes_$movieId", 1250000000L)
-            return DownloadProgressInfo(DownloadState.DOWNLOADED, total, total, 100)
-        }
-
-        val isCloudDownloading = prefs.getBoolean("dl_cloud_downloading_$movieId", false)
-        if (isCloudDownloading) {
-            val prog = prefs.getInt("dl_cloud_prog_$movieId", 0)
-            val total = prefs.getLong("dl_total_bytes_$movieId", 1250000000L)
-            val current = (total * prog) / 100
-            val state = if (prog >= 100) DownloadState.DOWNLOADED else DownloadState.DOWNLOADING
-            return DownloadProgressInfo(state, current, total, prog)
-        }
-
         val downloadId = prefs.getLong("dl_id_$movieId", -1L)
         if (downloadId != -1L) {
             try {
@@ -123,39 +107,46 @@ class DownloadManagerHelper(private val context: Context) {
         return if (path != null && File(path).exists()) path else null
     }
 
-    fun startDownload(movie: Movie): Long {
+    suspend fun startDownload(movie: Movie): Long = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         addDownloadMovieId(movie.id)
-        if (!movie.videoUrl.startsWith("http://") && !movie.videoUrl.startsWith("https://")) {
-            // For cloud/youtube streams, initialize offline cloud download
-            prefs.edit()
-                .putBoolean("dl_cloud_downloading_${movie.id}", true)
-                .putBoolean("dl_cloud_done_${movie.id}", false)
-                .putInt("dl_cloud_prog_${movie.id}", 0)
-                .putLong("dl_total_bytes_${movie.id}", movie.fileSizeBytes)
-                .apply()
-            return 1L
+        var streamUrl = movie.videoUrl
+        if (streamUrl.startsWith("archive:")) {
+            val archiveId = streamUrl.removePrefix("archive:")
+            val resolved = OnlineMovieSearchService.resolveArchiveMp4Url(archiveId)
+            if (resolved != null) {
+                streamUrl = resolved
+            }
         }
 
-        val cleanTitle = movie.title.replace(Regex("[^a-zA-Z0-9]"), "_")
-        val fileName = "CineClassic_${movie.id}_$cleanTitle.mp4"
-        val request = DownloadManager.Request(Uri.parse(movie.videoUrl))
-            .setTitle(movie.title)
-            .setDescription("Downloading ${movie.quality} ad-free movie...")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_MOVIES, fileName)
-            .setAllowedOverMetered(true)
-            .setAllowedOverRoaming(true)
+        if (!streamUrl.startsWith("http://") && !streamUrl.startsWith("https://")) {
+            return@withContext -2L
+        }
 
-        val downloadId = downloadManager.enqueue(request)
-        val file = File(context.getExternalFilesDir(Environment.DIRECTORY_MOVIES), fileName)
+        try {
+            val cleanTitle = movie.title.replace(Regex("[^a-zA-Z0-9]"), "_")
+            val fileName = "CineClassic_${movie.id}_$cleanTitle.mp4"
+            val request = DownloadManager.Request(Uri.parse(streamUrl))
+                .setTitle(movie.title)
+                .setDescription("Downloading ${movie.quality} ad-free movie...")
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_MOVIES, fileName)
+                .setAllowedOverMetered(true)
+                .setAllowedOverRoaming(true)
 
-        prefs.edit()
-            .putLong("dl_id_${movie.id}", downloadId)
-            .putString("dl_path_${movie.id}", file.absolutePath)
-            .putString("dl_movie_id_$downloadId", movie.id)
-            .apply()
+            val downloadId = downloadManager.enqueue(request)
+            val file = File(context.getExternalFilesDir(Environment.DIRECTORY_MOVIES), fileName)
 
-        return downloadId
+            prefs.edit()
+                .putLong("dl_id_${movie.id}", downloadId)
+                .putString("dl_path_${movie.id}", file.absolutePath)
+                .putString("dl_movie_id_$downloadId", movie.id)
+                .apply()
+
+            downloadId
+        } catch (e: Exception) {
+            e.printStackTrace()
+            -1L
+        }
     }
 
     fun removeDownload(movieId: String) {

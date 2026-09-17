@@ -36,6 +36,18 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCustomCc"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginEnd="10dp"
+            android:text="CC: OFF"
+            android:textColor="@color/text_primary"
+            android:textSize="11sp"
+            app:cornerRadius="18dp"
+            app:strokeColor="@color/text_secondary" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -61,7 +73,7 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageButton
-            android:id="@+id/exo_rew"
+            android:id="@+id/btnPlayerRewind"
             android:layout_width="54dp"
             android:layout_height="54dp"
             android:background="?attr/selectableItemBackgroundBorderless"
@@ -78,7 +90,7 @@
             android:src="@drawable/ic_play" />
 
         <ImageButton
-            android:id="@+id/exo_ffwd"
+            android:id="@+id/btnPlayerForward"
             android:layout_width="54dp"
             android:layout_height="54dp"
             android:background="?attr/selectableItemBackgroundBorderless"

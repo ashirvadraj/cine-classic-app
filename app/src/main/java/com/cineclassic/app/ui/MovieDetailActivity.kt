@@ -61,7 +61,7 @@ class MovieDetailActivity : AppCompatActivity() {
     }
 
     private fun bindMovieDetails(movie: Movie) {
-        binding.tvDetailTitle.text = "${movie.title} (${movie.year})"
+        binding.tvDetailTitle.text = movie.displayTitleWithYear
         binding.tvDetailMeta.text = "${movie.language} • ${movie.duration} • ${movie.genre}"
         binding.tvDetailQuality.text = movie.quality
         binding.tvDetailRating.text = "★ ${movie.rating}"
@@ -93,18 +93,32 @@ class MovieDetailActivity : AppCompatActivity() {
         }
 
         binding.btnDownloadMovie.setOnClickListener {
-            val progress = downloadHelper.getDownloadProgress(movie.id)
-            when (progress.state) {
-                DownloadManagerHelper.DownloadState.DOWNLOADED -> {
-                    Toast.makeText(this, "Movie already downloaded! Tap 'Watch Ad-Free' to play offline.", Toast.LENGTH_SHORT).show()
-                }
-                DownloadManagerHelper.DownloadState.DOWNLOADING -> {
-                    Toast.makeText(this, "Download already in progress (${progress.progressPercent}%)", Toast.LENGTH_SHORT).show()
-                }
-                DownloadManagerHelper.DownloadState.NOT_DOWNLOADED -> {
-                    downloadHelper.startDownload(movie)
-                    Toast.makeText(this, "Starting download for ${movie.title}...", Toast.LENGTH_SHORT).show()
-                    startMonitoringProgress(movie)
+            lifecycleScope.launch {
+                val progress = downloadHelper.getDownloadProgress(movie.id)
+                when (progress.state) {
+                    DownloadManagerHelper.DownloadState.DOWNLOADED -> {
+                        Toast.makeText(this@MovieDetailActivity, "Movie already downloaded! Tap 'Watch Ad-Free' to play offline.", Toast.LENGTH_SHORT).show()
+                    }
+                    DownloadManagerHelper.DownloadState.DOWNLOADING -> {
+                        Toast.makeText(this@MovieDetailActivity, "Download already in progress (${progress.progressPercent}%)", Toast.LENGTH_SHORT).show()
+                    }
+                    DownloadManagerHelper.DownloadState.NOT_DOWNLOADED -> {
+                        binding.btnDownloadMovie.isEnabled = false
+                        val downloadId = downloadHelper.startDownload(movie)
+                        binding.btnDownloadMovie.isEnabled = true
+                        if (downloadId == -2L) {
+                            Toast.makeText(
+                                this@MovieDetailActivity,
+                                "Direct offline download is not supported for YouTube streams. Please stream online.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else if (downloadId == -1L) {
+                            Toast.makeText(this@MovieDetailActivity, "Failed to start download.", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@MovieDetailActivity, "Starting download for ${movie.title}...", Toast.LENGTH_SHORT).show()
+                            startMonitoringProgress(movie)
+                        }
+                    }
                 }
             }
         }
@@ -113,18 +127,7 @@ class MovieDetailActivity : AppCompatActivity() {
     private fun startMonitoringProgress(movie: Movie) {
         progressJob?.cancel()
         progressJob = lifecycleScope.launch {
-            val isCloud = !movie.videoUrl.startsWith("http://") && !movie.videoUrl.startsWith("https://")
-            var cloudPercent = 0
-
             while (isActive) {
-                val info = downloadHelper.getDownloadProgress(movie.id)
-
-                if (isCloud && info.state == DownloadManagerHelper.DownloadState.DOWNLOADING) {
-                    cloudPercent += 5
-                    if (cloudPercent > 100) cloudPercent = 100
-                    downloadHelper.updateCloudProgress(movie.id, cloudPercent, movie.fileSizeBytes)
-                }
-
                 val currentInfo = downloadHelper.getDownloadProgress(movie.id)
                 when (currentInfo.state) {
                     DownloadManagerHelper.DownloadState.DOWNLOADING -> {
@@ -134,7 +137,11 @@ class MovieDetailActivity : AppCompatActivity() {
                         binding.tvDownloadProgressStatus.text = "Downloading HD Movie..."
                         val dlMb = currentInfo.downloadedBytes / (1024.0 * 1024.0)
                         val totalMb = currentInfo.totalBytes / (1024.0 * 1024.0)
-                        binding.tvDownloadProgressBytes.text = "Downloaded: %.1f MB / %.1f MB".format(dlMb, totalMb)
+                        if (totalMb > 0) {
+                            binding.tvDownloadProgressBytes.text = "Downloaded: %.1f MB / %.1f MB".format(dlMb, totalMb)
+                        } else {
+                            binding.tvDownloadProgressBytes.text = "Downloaded: %.1f MB".format(dlMb)
+                        }
                         binding.btnDownloadMovie.text = "Downloading ${currentInfo.progressPercent}%"
                         binding.btnDownloadMovie.setIconResource(R.drawable.ic_download)
                     }
@@ -156,7 +163,7 @@ class MovieDetailActivity : AppCompatActivity() {
                         break
                     }
                 }
-                delay(600)
+                delay(800)
             }
         }
     }

@@ -22,4 +22,10 @@ data class Movie(
 ) : Serializable {
     val castFormatted: String
         get() = cast.joinToString(", ")
+
+    val displayYear: String
+        get() = if (year in 1900..2026) "$year" else ""
+
+    val displayTitleWithYear: String
+        get() = if (year in 1900..2026) "$title ($year)" else title
 }

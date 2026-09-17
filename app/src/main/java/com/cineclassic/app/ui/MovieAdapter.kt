@@ -44,7 +44,7 @@ class MovieAdapter(
 
         fun bind(movie: Movie) {
             binding.tvMovieTitle.text = movie.title
-            binding.tvMovieYear.text = "${movie.year} • ${movie.language}"
+            binding.tvMovieYear.text = if (movie.displayYear.isNotEmpty()) "${movie.displayYear} • ${movie.language}" else movie.language
             binding.tvRating.text = "★ ${movie.rating.replace("/10", "")}"
             binding.tvQualityTag.text = if (movie.quality.contains("1080p")) "1080p" else "720p"
 

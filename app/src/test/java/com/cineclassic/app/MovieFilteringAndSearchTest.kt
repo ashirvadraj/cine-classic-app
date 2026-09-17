@@ -109,4 +109,15 @@ class MovieFilteringAndSearchTest {
         assertEquals(1, results.size)
         assertEquals("Charade", results.first().title)
     }
+
+    @Test
+    fun testDisplayYearAndTitleWithYear() {
+        val validYearMovie = sampleMovies.first()
+        assertEquals("1973", validYearMovie.displayYear)
+        assertEquals("Zanjeer (1973 Original Classic) (1973)", validYearMovie.displayTitleWithYear)
+
+        val zeroYearMovie = validYearMovie.copy(year = 0)
+        assertEquals("", zeroYearMovie.displayYear)
+        assertEquals("Zanjeer (1973 Original Classic)", zeroYearMovie.displayTitleWithYear)
+    }
 }

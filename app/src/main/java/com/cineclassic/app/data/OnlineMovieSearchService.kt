@@ -271,10 +271,11 @@ object OnlineMovieSearchService {
 
                                 seenIds.add(vid)
                                 val titleLower = title.lowercase()
+                                val movieYear = extractYear(title, snippet)
                                 val movie = Movie(
                                     id = "yt_$vid",
                                     title = title,
-                                    year = extractYear(title),
+                                    year = movieYear,
                                     language = if (titleLower.contains("hindi") || titleLower.contains("bollywood")) "Hindi" else "English",
                                     genre = if (isSeriesQuery) "Web Series HD" else "Full Movie HD",
                                     duration = if (durText.isNotBlank()) formatDurationDisplay(durText) else "Full Feature",
@@ -324,8 +325,9 @@ object OnlineMovieSearchService {
                         val id = doc.optString("identifier")
                         val rawTitle = doc.optString("title")
                         val title = unescapeHtml(rawTitle)
-                        val year = doc.optInt("year", 1970)
                         val desc = unescapeHtml(doc.optString("description", "Public domain classic video archive."))
+                        val rawYear = doc.optInt("year", 0)
+                        val movieYear = if (rawYear in 1900..2026) rawYear else extractYear(title, desc)
                         val itemSize = doc.optLong("item_size", 0L)
 
                         // Strict size check eliminates clips, short songs, promos
@@ -335,11 +337,15 @@ object OnlineMovieSearchService {
                             if (isBlacklisted(title) || isSnippetBlacklisted(desc)) continue
                             if (!matchesQueryTokens(title, normalized)) continue
 
+                            // Resolve direct high-speed MP4 URL
+                            val directMp4 = resolveArchiveMp4Url(id)
+                            val streamUrl = directMp4 ?: "archive:$id"
+
                             seenIds.add(id)
                             val movie = Movie(
                                 id = "archive_$id",
                                 title = title,
-                                year = if (year > 1900) year else 1970,
+                                year = movieYear,
                                 language = "Classic",
                                 genre = "Public Domain Archive",
                                 duration = "Full Feature",
@@ -349,7 +355,7 @@ object OnlineMovieSearchService {
                                 rating = "8.0/10",
                                 posterUrl = "https://archive.org/services/img/$id",
                                 backdropUrl = "https://archive.org/services/img/$id",
-                                videoUrl = "archive:$id",
+                                videoUrl = streamUrl,
                                 quality = "720p HD",
                                 fileSizeBytes = if (itemSize > 0L) itemSize else 900000000L
                             )
@@ -386,11 +392,122 @@ object OnlineMovieSearchService {
         }
     }
 
-    fun extractYear(title: String): Int {
-        val yearPattern = Pattern.compile("""(19\d\d|20\d\d)""")
-        val m = yearPattern.matcher(title)
-        return if (m.find()) {
-            m.group(1)?.toIntOrNull() ?: 1975
-        } else 1975
+    val KNOWN_MOVIE_YEARS = mapOf(
+        "the lunchbox" to 2013,
+        "lunchbox" to 2013,
+        "dilwale dulhania le jayenge" to 1995,
+        "ddlj" to 1995,
+        "veer zaara" to 2004,
+        "veer zara" to 2004,
+        "zanjeer" to 1973,
+        "sholay" to 1975,
+        "deewaar" to 1975,
+        "don" to 1978,
+        "mughal e azam" to 1960,
+        "mother india" to 1957,
+        "pyaasa" to 1957,
+        "anand" to 1971,
+        "awara" to 1951,
+        "gol maal" to 1979,
+        "chupke chupke" to 1975,
+        "amar akbar anthony" to 1977,
+        "3 idiots" to 2009,
+        "jab we met" to 2007,
+        "lagaan" to 2001,
+        "taare zameen par" to 2007,
+        "dangal" to 2016,
+        "pk" to 2014,
+        "swades" to 2004,
+        "chak de india" to 2007,
+        "kal ho naa ho" to 2003,
+        "kabhi khushi kabhie gham" to 2001,
+        "k3g" to 2001,
+        "kuch kuch hota hai" to 1998,
+        "dil to pagal hai" to 1997,
+        "dil chahta hai" to 2001,
+        "barfi" to 2012,
+        "queen" to 2014,
+        "andhadhun" to 2018,
+        "drishyam" to 2015,
+        "gangs of wasseypur" to 2012,
+        "bajrangi bhaijaan" to 2015,
+        "sultan" to 2016,
+        "om shanti om" to 2007,
+        "main hoon na" to 2004,
+        "karan arjun" to 1995,
+        "baazigar" to 1993,
+        "darr" to 1993,
+        "hum aapke hain koun" to 1994,
+        "hum saath saath hain" to 1999,
+        "maine pyar kiya" to 1989,
+        "charade" to 1963,
+        "night of the living dead" to 1968,
+        "his girl friday" to 1940,
+        "carnival of souls" to 1962,
+        "plan 9 from outer space" to 1959,
+        "nosferatu" to 1922,
+        "the general" to 1926,
+        "the stranger" to 1946,
+        "a star is born" to 1937,
+        "gulliver's travels" to 1939
+    )
+
+    fun extractYear(title: String, extraText: String = ""): Int {
+        val yearPattern = Pattern.compile("""\b(19\d\d|20\d\d)\b""")
+        val mTitle = yearPattern.matcher(title)
+        if (mTitle.find()) {
+            val y = mTitle.group(1)?.toIntOrNull()
+            if (y != null && y in 1900..2026) return y
+        }
+
+        val normTitle = normalizeSearchQuery(title)
+        for ((key, yr) in KNOWN_MOVIE_YEARS) {
+            if (normTitle.contains(key)) return yr
+        }
+
+        if (extraText.isNotEmpty()) {
+            val mExtra = yearPattern.matcher(extraText)
+            if (mExtra.find()) {
+                val y = mExtra.group(1)?.toIntOrNull()
+                if (y != null && y in 1900..2026) return y
+            }
+        }
+
+        return 0
+    }
+
+    fun resolveArchiveMp4Url(identifier: String): String? {
+        try {
+            val url = URL("https://archive.org/metadata/$identifier/files")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+            conn.connectTimeout = 3500
+            conn.readTimeout = 3500
+            if (conn.responseCode == 200) {
+                val text = conn.inputStream.bufferedReader().use { it.readText() }
+                val root = JSONObject(text)
+                val files = root.optJSONArray("result") ?: return null
+                var bestFile = ""
+                var bestSize = 0L
+                for (i in 0 until files.length()) {
+                    val f = files.getJSONObject(i)
+                    val name = f.optString("name")
+                    val size = f.optLong("size", 0L)
+                    if (name.endsWith(".mp4", ignoreCase = true) && !name.endsWith(".ia.mp4", ignoreCase = true)) {
+                        if (size > bestSize) {
+                            bestSize = size
+                            bestFile = name
+                        }
+                    }
+                }
+                if (bestFile.isNotEmpty()) {
+                    val encodedFile = URLEncoder.encode(bestFile, "UTF-8").replace("+", "%20")
+                    return "https://archive.org/download/$identifier/$encodedFile"
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
     }
 }

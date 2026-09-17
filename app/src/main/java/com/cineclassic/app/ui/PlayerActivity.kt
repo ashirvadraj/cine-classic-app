@@ -39,6 +39,7 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var downloadHelper: DownloadManagerHelper
     private var currentMovie: Movie? = null
     private var currentVideoId: String = ""
+    private var isSubtitlesEnabled: Boolean = false
 
     private val hideHandler = Handler(Looper.getMainLooper())
     private val hideRunnable = Runnable {
@@ -92,12 +93,51 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun setupHeader(movie: Movie) {
-        binding.tvPlayerTitle.text = "${movie.title} (${movie.year})"
+        binding.tvPlayerTitle.text = movie.displayTitleWithYear
         binding.btnPlayerBack.setOnClickListener { finish() }
 
-        // Also connect back button inside native player controls
+        // Connect back button inside native player controls
         binding.playerView.findViewById<View>(R.id.btnPlayerBack)?.setOnClickListener {
             finish()
+        }
+
+        binding.playerView.findViewById<android.widget.TextView>(R.id.tvPlayerTitle)?.text = movie.displayTitleWithYear
+
+        // Subtitle toggle in top header
+        binding.btnToggleSubtitles.text = if (isSubtitlesEnabled) "CC: ON" else "CC: OFF"
+        binding.btnToggleSubtitles.setOnClickListener {
+            toggleSubtitles()
+        }
+
+        // Subtitle toggle inside custom player control view
+        binding.playerView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnCustomCc)?.let { btnCc ->
+            btnCc.text = if (isSubtitlesEnabled) "CC: ON" else "CC: OFF"
+            btnCc.setOnClickListener {
+                toggleSubtitles()
+            }
+        }
+
+        // 10-second Rewind button
+        binding.playerView.findViewById<View>(R.id.btnPlayerRewind)?.setOnClickListener {
+            exoPlayer?.let { p ->
+                val current = p.currentPosition
+                val target = (current - 10000L).coerceAtLeast(0L)
+                p.seekTo(target)
+            }
+        }
+
+        // 10-second Fast Forward button
+        binding.playerView.findViewById<View>(R.id.btnPlayerForward)?.setOnClickListener {
+            exoPlayer?.let { p ->
+                val current = p.currentPosition
+                val duration = p.duration
+                val target = if (duration > 0L) {
+                    (current + 10000L).coerceAtMost(duration)
+                } else {
+                    current + 10000L
+                }
+                p.seekTo(target)
+            }
         }
 
         binding.btnNextStream.setOnClickListener {
@@ -109,6 +149,24 @@ class PlayerActivity : AppCompatActivity() {
             toggleHeader()
         }
         scheduleHeaderHide()
+    }
+
+    private fun toggleSubtitles() {
+        isSubtitlesEnabled = !isSubtitlesEnabled
+        val label = if (isSubtitlesEnabled) "CC: ON" else "CC: OFF"
+        binding.btnToggleSubtitles.text = label
+        binding.playerView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnCustomCc)?.text = label
+
+        exoPlayer?.let { player ->
+            player.trackSelectionParameters = player.trackSelectionParameters
+                .buildUpon()
+                .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, !isSubtitlesEnabled)
+                .build()
+        }
+        binding.playerView.subtitleView?.visibility = if (isSubtitlesEnabled) View.VISIBLE else View.GONE
+
+        val msg = if (isSubtitlesEnabled) "Subtitles Enabled" else "Subtitles Disabled (Clean View)"
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 
     private fun toggleHeader() {
@@ -213,7 +271,7 @@ class PlayerActivity : AppCompatActivity() {
             </head>
             <body>
                 <iframe 
-                    src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&controls=1&modestbranding=1&rel=0&fs=1&playsinline=1&iv_load_policy=3&origin=https://www.youtube-nocookie.com" 
+                    src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&controls=1&modestbranding=1&rel=0&fs=1&playsinline=1&iv_load_policy=3&cc_load_policy=0&origin=https://www.youtube-nocookie.com" 
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                     allowfullscreen>
                 </iframe>
@@ -260,7 +318,16 @@ class PlayerActivity : AppCompatActivity() {
         val mediaSourceFactory = DefaultMediaSourceFactory(this).setDataSourceFactory(dataSourceFactory)
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setSeekBackIncrementMs(10000L)
+            .setSeekForwardIncrementMs(10000L)
             .build()
+
+        // Disable subtitles by default for unobstructed movie viewing
+        player.trackSelectionParameters = player.trackSelectionParameters
+            .buildUpon()
+            .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, !isSubtitlesEnabled)
+            .build()
+        binding.playerView.subtitleView?.visibility = if (isSubtitlesEnabled) View.VISIBLE else View.GONE
 
         exoPlayer = player
         binding.playerView.player = player
