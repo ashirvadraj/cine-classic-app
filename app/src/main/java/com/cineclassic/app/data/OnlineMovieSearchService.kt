@@ -302,11 +302,11 @@ object OnlineMovieSearchService {
             ytConn?.disconnect()
         }
 
-        // 2. Archive.org Full Movie Search (Strictly full feature films >= 250MB)
+        // 2. Archive.org Full Movie Search (Strictly full feature films >= 250MB, Hindi/English only)
         var archiveConn: HttpURLConnection? = null
         try {
             val encodedQuery = URLEncoder.encode("title:($normalized) AND mediatype:(movies)", "UTF-8")
-            val archiveUrl = URL("https://archive.org/advancedsearch.php?q=$encodedQuery&fl[]=identifier,title,year,description,item_size&rows=8&output=json")
+            val archiveUrl = URL("https://archive.org/advancedsearch.php?q=$encodedQuery&fl[]=identifier,title,year,description,language,item_size&rows=8&output=json")
             archiveConn = archiveUrl.openConnection() as HttpURLConnection
             archiveConn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             archiveConn.connectTimeout = 6000
@@ -329,6 +329,7 @@ object OnlineMovieSearchService {
                         val rawYear = doc.optInt("year", 0)
                         val movieYear = if (rawYear in 1900..2026) rawYear else extractYear(title, desc)
                         val itemSize = doc.optLong("item_size", 0L)
+                        val archiveLang = doc.optString("language", "")
 
                         // Strict size check eliminates clips, short songs, promos
                         if (itemSize < minItemSize) continue
@@ -336,6 +337,10 @@ object OnlineMovieSearchService {
                         if (id.isNotEmpty() && !seenIds.contains(id)) {
                             if (isBlacklisted(title) || isSnippetBlacklisted(desc)) continue
                             if (!matchesQueryTokens(title, normalized)) continue
+
+                            // Language filter: only allow Hindi or English content
+                            val detectedLang = detectArchiveLanguage(archiveLang, title, desc)
+                            if (detectedLang == "skip") continue
 
                             // Resolve direct high-speed MP4 URL
                             val directMp4 = resolveArchiveMp4Url(id)
@@ -346,7 +351,7 @@ object OnlineMovieSearchService {
                                 id = "archive_$id",
                                 title = title,
                                 year = movieYear,
-                                language = "Classic",
+                                language = detectedLang,
                                 genre = "Public Domain Archive",
                                 duration = "Full Feature",
                                 director = "Internet Archive Preservation",
@@ -474,6 +479,70 @@ object OnlineMovieSearchService {
         }
 
         return 0
+    }
+
+    /** Language signals that indicate Hindi Bollywood content in title/description */
+    private val HINDI_SIGNALS = setOf(
+        "hindi", "bollywood", "amitabh", "shahrukh", "shah rukh", "salman", "aamir",
+        "irrfan", "nawazuddin", "priyanka", "deepika", "aishwarya", "kajol", "madhuri",
+        "rajkumar", "ranbir", "ranveer", "akshay kumar", "hrithik", "katrina",
+        "yash raj", "dharma", "eros", "tips films", "t-series", "zee music",
+        "mumbai", "delhi", "bollywood movie", "hindi film", "hindi cinema",
+        "rajesh khanna", "dharmendra", "hema malini", "jaya bahaduri", "rekha",
+        "guru dutt", "raj kapoor", "dilip kumar", "dev anand"
+    )
+
+    /** Language values (from archive metadata) that are clearly NOT Hindi or English */
+    private val NON_HINDI_ENGLISH_LANGS = setOf(
+        "spanish", "es", "spa",
+        "tamil", "ta", "tam",
+        "telugu", "te", "tel",
+        "malayalam", "ml", "mal",
+        "kannada", "kn", "kan",
+        "french", "fr", "fra",
+        "german", "de", "deu", "ger",
+        "portuguese", "pt", "por",
+        "arabic", "ar", "ara",
+        "chinese", "zh", "chi", "zho",
+        "japanese", "ja", "jpn",
+        "korean", "ko", "kor",
+        "russian", "ru", "rus",
+        "italian", "it", "ita",
+        "bengali", "bn", "ben",
+        "marathi", "mr", "mar",
+        "gujarati", "gu", "guj",
+        "punjabi", "pa", "pan",
+        "urdu", "ur", "urd",
+        "turkish", "tr", "tur"
+    )
+
+    /**
+     * Returns "Hindi", "English", or "skip".
+     * Uses archive metadata language field first, then keyword signals in title/desc.
+     */
+    fun detectArchiveLanguage(archiveLang: String, title: String, desc: String): String {
+        val langLower = archiveLang.lowercase().trim()
+        val combined = (title + " " + desc).lowercase()
+
+        // If archive explicitly labels it as a non-Hindi/English language → skip
+        if (langLower.isNotEmpty() && NON_HINDI_ENGLISH_LANGS.any { langLower.contains(it) }) {
+            // But still allow if it clearly has Hindi signals (e.g., Hindi+Urdu bilingual)
+            if (HINDI_SIGNALS.none { combined.contains(it) }) return "skip"
+        }
+
+        // Archive explicitly says Hindi (including ISO codes hi/hin) → accept
+        if (langLower == "hi" || langLower == "hin" || langLower.contains("hindi")) return "Hindi"
+        // Archive explicitly says English (including ISO codes en/eng) → accept
+        if (langLower == "en" || langLower == "eng" || langLower.contains("english")) return "English"
+
+        // No explicit language metadata — detect from content
+        if (HINDI_SIGNALS.any { combined.contains(it) }) return "Hindi"
+
+        // If no language metadata and no Hindi signals, default to English
+        // (most old public domain Archive.org items without metadata are English)
+        if (langLower.isEmpty()) return "English"
+
+        return "skip"
     }
 
     fun resolveArchiveMp4Url(identifier: String): String? {

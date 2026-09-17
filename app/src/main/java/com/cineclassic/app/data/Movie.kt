@@ -28,4 +28,8 @@ data class Movie(
 
     val displayTitleWithYear: String
         get() = if (year in 1900..2026) "$title ($year)" else title
+
+    /** True for YouTube-streamed movies that cannot be downloaded offline. */
+    val isYouTubeStream: Boolean
+        get() = videoUrl.startsWith("youtube:")
 }

@@ -135,4 +135,33 @@ class OnlineMovieSearchServiceTest {
         // Query 'dilwale dulhania le jayenge' should NOT match Ajay Devgn's 'Dilwale (1994)'
         assertFalse(OnlineMovieSearchService.matchesQueryTokens("Dilwale (HD) (1994) Full Hindi Movie", "dilwale dulhaniya le jyege"))
     }
+
+    @Test
+    fun testDetectArchiveLanguage() {
+        val svc = OnlineMovieSearchService
+
+        // Explicit Hindi metadata → "Hindi"
+        assertEquals("Hindi", svc.detectArchiveLanguage("Hindi", "Sholay 1975", ""))
+        assertEquals("Hindi", svc.detectArchiveLanguage("hi", "Sholay 1975", ""))
+
+        // Explicit English metadata → "English"
+        assertEquals("English", svc.detectArchiveLanguage("English", "Charade 1963", ""))
+
+        // No metadata but Hindi signals in title/desc → "Hindi"
+        assertEquals("Hindi", svc.detectArchiveLanguage("", "Dilwale Dulhania Le Jayenge Hindi Full Movie", ""))
+        assertEquals("Hindi", svc.detectArchiveLanguage("", "Amitabh Bachchan classic", ""))
+        assertEquals("Hindi", svc.detectArchiveLanguage("", "Sholay Bollywood Film", ""))
+
+        // No metadata, no Hindi signals → default "English"
+        assertEquals("English", svc.detectArchiveLanguage("", "Night of the Living Dead 1968", ""))
+
+        // Spanish metadata with no Hindi signals → "skip"
+        assertEquals("skip", svc.detectArchiveLanguage("Spanish", "La Lunchera", "En Mumbai cada día"))
+
+        // Tamil metadata → "skip"
+        assertEquals("skip", svc.detectArchiveLanguage("Tamil", "Rajini movie", "Tamil film"))
+
+        // Telugu metadata → "skip"
+        assertEquals("skip", svc.detectArchiveLanguage("Telugu", "Baahubali", "Telugu blockbuster"))
+    }
 }

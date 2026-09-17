@@ -48,6 +48,9 @@ class MovieAdapter(
             binding.tvRating.text = "★ ${movie.rating.replace("/10", "")}"
             binding.tvQualityTag.text = if (movie.quality.contains("1080p")) "1080p" else "720p"
 
+            // Show "Stream Only" badge for YouTube movies (not downloadable)
+            binding.tvStreamOnly.visibility = if (movie.isYouTubeStream) android.view.View.VISIBLE else android.view.View.GONE
+
             Glide.with(binding.ivPoster.context)
                 .load(movie.posterUrl)
                 .placeholder(R.drawable.bg_card)

@@ -51,6 +51,23 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <!-- Stream Only badge: shown for YouTube movies -->
+        <TextView
+            android:id="@+id/tvStreamOnly"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="6dp"
+            android:background="#CC1565C0"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:text="▶ Stream"
+            android:textColor="#FFFFFF"
+            android:textSize="8sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/ivPoster"
+            app:layout_constraintEnd_toEndOf="parent" />
+
         <TextView
             android:id="@+id/tvMovieTitle"
             android:layout_width="match_parent"
