@@ -101,7 +101,23 @@ class MovieDetailActivity : AppCompatActivity() {
                 val progress = downloadHelper.getDownloadProgress(movie.id)
                 when (progress.state) {
                     DownloadManagerHelper.DownloadState.DOWNLOADED -> {
-                        Toast.makeText(this@MovieDetailActivity, "Movie already downloaded! Tap 'Watch Offline' to play.", Toast.LENGTH_SHORT).show()
+                        androidx.appcompat.app.AlertDialog.Builder(this@MovieDetailActivity)
+                            .setTitle("Offline Download Options")
+                            .setMessage("\"${movie.title}\" is saved on your phone.\n\nWould you like to delete it to free up storage space?")
+                            .setPositiveButton("Delete from Phone") { _, _ ->
+                                downloadHelper.removeDownload(movie.id)
+                                progressJob?.cancel()
+                                binding.cardDownloadProgress.visibility = View.GONE
+                                binding.btnDownloadMovie.text = "Download"
+                                binding.btnDownloadMovie.setIconResource(R.drawable.ic_download)
+                                binding.btnPlayMovie.text = "Watch Ad-Free"
+                                Toast.makeText(this@MovieDetailActivity, "Movie deleted from phone storage.", Toast.LENGTH_SHORT).show()
+                            }
+                            .setNeutralButton("Play Movie") { _, _ ->
+                                binding.btnPlayMovie.performClick()
+                            }
+                            .setNegativeButton("Cancel", null)
+                            .show()
                     }
                     DownloadManagerHelper.DownloadState.DOWNLOADING -> {
                         Toast.makeText(this@MovieDetailActivity, "Download already in progress (${progress.progressPercent}%)", Toast.LENGTH_SHORT).show()

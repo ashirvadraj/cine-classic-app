@@ -98,15 +98,16 @@
             android:src="@drawable/ic_forward10" />
     </LinearLayout>
 
-    <!-- Bottom Progress & Duration Controls -->
+    <!-- Bottom Progress & Duration Controls (Visible Seek Slider) -->
     <LinearLayout
         android:id="@+id/llPlayerBottom"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="16dp"
-        android:paddingBottom="16dp"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="24dp"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <TextView
@@ -114,26 +115,33 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="00:00"
-            android:textColor="@color/text_primary"
-            android:textSize="12sp" />
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
 
         <androidx.media3.ui.DefaultTimeBar
             android:id="@+id/exo_progress"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="44dp"
             android:layout_marginHorizontal="12dp"
             android:layout_weight="1"
-            app:played_color="@color/primary"
-            app:scrubber_color="@color/primary"
-            app:unplayed_color="@color/divider_color" />
+            app:bar_height="5dp"
+            app:touch_target_height="44dp"
+            app:scrubber_enabled_size="16dp"
+            app:scrubber_dragged_size="22dp"
+            app:played_color="#E50914"
+            app:scrubber_color="#E50914"
+            app:buffered_color="#66FFFFFF"
+            app:unplayed_color="#4DFFFFFF" />
 
         <TextView
             android:id="@+id/exo_duration"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="00:00"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            android:textColor="#CCCCCC"
+            android:textSize="13sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

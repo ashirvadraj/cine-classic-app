@@ -245,6 +245,8 @@ class DownloadManagerHelper(private val context: Context) {
 
     fun removeDownload(movieId: String) {
         removeDownloadMovieId(movieId)
+
+        // 1. Remove from system DownloadManager
         val downloadId = prefs.getLong("dl_id_$movieId", -1L)
         if (downloadId != -1L) {
             try {
@@ -253,15 +255,61 @@ class DownloadManagerHelper(private val context: Context) {
                 e.printStackTrace()
             }
         }
+
+        // 2. Delete explicitly saved path from disk
         val path = prefs.getString("dl_path_$movieId", null)
         if (path != null) {
-            val file = File(path)
-            if (file.exists()) file.delete()
+            try {
+                val file = File(path)
+                if (file.exists()) {
+                    file.delete()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
+
+        // 3. Scan and delete any files matching CineClassic_${movieId}_* in app storage
+        try {
+            val moviesDir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
+            moviesDir?.listFiles()?.forEach { f ->
+                if (f.name.startsWith("CineClassic_${movieId}_") || f.name == "CineClassic_$movieId.mp4") {
+                    f.delete()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 4. Scan and delete in public Movies / Downloads directories if accessible
+        try {
+            val publicMovies = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+            File(publicMovies, "CineClassic").listFiles()?.forEach { f ->
+                if (f.name.startsWith("CineClassic_${movieId}_") || f.name == "CineClassic_$movieId.mp4") {
+                    f.delete()
+                }
+            }
+        } catch (e: Exception) {
+            // ignore
+        }
+
+        try {
+            val publicDownloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            File(publicDownloads, "CineClassic").listFiles()?.forEach { f ->
+                if (f.name.startsWith("CineClassic_${movieId}_") || f.name == "CineClassic_$movieId.mp4") {
+                    f.delete()
+                }
+            }
+        } catch (e: Exception) {
+            // ignore
+        }
+
+        // 5. Clean SharedPreferences flags
         prefs.edit()
             .remove("dl_id_$movieId")
             .remove("dl_path_$movieId")
             .remove("dl_completed_$movieId")
+            .remove("dl_movie_id_$downloadId")
             .apply()
     }
 }

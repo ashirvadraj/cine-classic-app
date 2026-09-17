@@ -149,7 +149,15 @@ class PlayerActivity : AppCompatActivity() {
         }
 
         binding.root.setOnClickListener {
-            toggleHeader()
+            if (binding.playerView.visibility == View.VISIBLE) {
+                if (binding.playerView.isControllerFullyVisible) {
+                    binding.playerView.hideController()
+                } else {
+                    binding.playerView.showController()
+                }
+            } else {
+                toggleHeader()
+            }
         }
         scheduleHeaderHide()
     }
@@ -328,6 +336,11 @@ class PlayerActivity : AppCompatActivity() {
         binding.webViewPlayer.stopLoading()
         binding.webViewPlayer.visibility = View.GONE
         binding.playerView.visibility = View.VISIBLE
+        binding.llPlayerHeader.visibility = View.GONE
+
+        // Make controller with visible seek slider display immediately with 5s timeout
+        binding.playerView.controllerShowTimeoutMs = 5000
+        binding.playerView.showController()
 
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent("Mozilla/5.0 (Linux; Android 10; Mobile; CineClassic) AppleWebKit/537.36")
