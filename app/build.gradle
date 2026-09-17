@@ -11,8 +11,8 @@ android {
         applicationId "com.cineclassic.app"
         minSdk 24
         targetSdk 34
-        versionCode 8
-        versionName "1.7.0"
+        versionCode 9
+        versionName "1.7.1"
     }
 
     applicationVariants.all { variant ->
@@ -25,6 +25,10 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
+        }
+        debug {
+            signingConfig signingConfigs.debug
         }
     }
     compileOptions {
