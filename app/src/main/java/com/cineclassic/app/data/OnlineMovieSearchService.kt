@@ -484,10 +484,10 @@ object OnlineMovieSearchService {
     /** Language signals that indicate Hindi Bollywood content in title/description */
     private val HINDI_SIGNALS = setOf(
         "hindi", "bollywood", "amitabh", "shahrukh", "shah rukh", "salman", "aamir",
-        "irrfan", "nawazuddin", "priyanka", "deepika", "aishwarya", "kajol", "madhuri",
-        "rajkumar", "ranbir", "ranveer", "akshay kumar", "hrithik", "katrina",
-        "yash raj", "dharma", "eros", "tips films", "t-series", "zee music",
-        "mumbai", "delhi", "bollywood movie", "hindi film", "hindi cinema",
+        "irrfan", "nawazuddin", "priyanka chopra", "deepika", "aishwarya", "kajol", "madhuri",
+        "rajkumar", "ranbir", "ranveer", "akshay kumar", "hrithik", "katrina kaif",
+        "yash raj", "dharma productions", "eros", "tips films", "t-series", "zee music",
+        "bollywood movie", "hindi film", "hindi cinema", "hindi dubbed",
         "rajesh khanna", "dharmendra", "hema malini", "jaya bahaduri", "rekha",
         "guru dutt", "raj kapoor", "dilip kumar", "dev anand"
     )

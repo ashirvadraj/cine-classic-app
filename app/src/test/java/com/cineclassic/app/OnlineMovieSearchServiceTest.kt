@@ -156,7 +156,7 @@ class OnlineMovieSearchServiceTest {
         assertEquals("English", svc.detectArchiveLanguage("", "Night of the Living Dead 1968", ""))
 
         // Spanish metadata with no Hindi signals → "skip"
-        assertEquals("skip", svc.detectArchiveLanguage("Spanish", "La Lunchera", "En Mumbai cada día"))
+        assertEquals("skip", svc.detectArchiveLanguage("Spanish", "La Lunchera", "En la ciudad cada día"))
 
         // Tamil metadata → "skip"
         assertEquals("skip", svc.detectArchiveLanguage("Tamil", "Rajini movie", "Tamil film"))
