@@ -78,7 +78,7 @@ class DownloadsActivity : AppCompatActivity() {
 
     private fun refreshDownloads() {
         val downloadedIds = downloadHelper.getAllDownloadMovieIds()
-        val allCatalog = repository.getAllMovies()
+        val allCatalog = repository.getAllKnownMovies()
         val allCandidateIds = (downloadedIds + allCatalog.map { it.id }).distinct()
 
         val downloadedOrDownloading = allCandidateIds.mapNotNull { id ->

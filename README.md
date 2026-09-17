@@ -37,6 +37,7 @@ CineClassic is a high-performance, ad-free Android application dedicated to gold
 - **Subtitles OFF by Default with Quick CC Toggle**: Embedded soft subtitles are disabled by default for clean, unobstructed viewing on Hindi and classic films, with an instant "CC: OFF / CC: ON" toggle button available in both the top bar and player controls.
 - **Reliable 10-Second Fast-Forward & Rewind Controls**: Dedicated rewind and fast-forward controls that stay permanently visible and responsive across all streaming and downloaded titles.
 - **Real Offline Downloads**: Direct MP4 resolution for archive preservation titles like *The Lunchbox (2013)*, downloading real files to local storage with verified offline ExoPlayer playback (zero fake simulation).
+- **Verified True Offline Playback**: Direct storage node redirect resolution (`resolveFinalDirectUrl`) eliminates cross-domain 302 failure in Android `DownloadManager`, with strict physical file size and completion verification before offline playback.
 - **Accurate Release Years**: Smart curated release year extraction for 50+ classic & modern hits (eliminating the legacy fallback 1975 year bug).
 - **Google Voice Search**: Instant voice search with mic input to search any movie or series hands-free.
 - **Transliteration & Typo-Tolerant Search**: Smart search normalizer effortlessly matches common variations (e.g., *DDLJ*, *Dilwale Dulhaniya Le Jyege*, *Veer Zara*, *Zanzeer*).
@@ -51,10 +52,10 @@ CineClassic is a high-performance, ad-free Android application dedicated to gold
 
 ## 🚀 Direct APK Download
 
-You can find the latest pre-compiled APK directly inside the repository under [`apk/cineclassic-v1.5.0.apk`](apk/cineclassic-v1.5.0.apk) or in the [GitHub Releases](../../releases).
+You can find the latest pre-compiled APK directly inside the repository under [`apk/cineclassic-v1.5.1.apk`](apk/cineclassic-v1.5.1.apk) or in the [GitHub Releases](../../releases).
 
 ### How to Install on Android
-1. Download `cineclassic-v1.5.0.apk` onto your Android phone.
+1. Download `cineclassic-v1.5.1.apk` onto your Android phone.
 2. Tap the APK to install.
 3. If prompted, allow "Install from unknown sources" for your file manager or browser.
 4. Launch **CineClassic** and enjoy classic cinema ad-free!
@@ -75,7 +76,7 @@ cd cine-classic-app
 ./gradlew assembleDebug
 
 # Output APK location:
-# app/build/outputs/apk/debug/cineclassic-v1.5.0.apk
+# app/build/outputs/apk/debug/cineclassic-v1.5.1.apk
 ```
 
 ---

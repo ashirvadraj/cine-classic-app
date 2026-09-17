@@ -1,8 +1,11 @@
 package com.cineclassic.app.ui
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -185,13 +188,30 @@ class PlayerActivity : AppCompatActivity() {
         hideHandler.postDelayed(hideRunnable, 4000)
     }
 
+    private fun isNetworkConnected(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
     private fun startPlayback(movie: Movie) {
         binding.progressBar.visibility = View.VISIBLE
 
         val localPath = downloadHelper.getLocalFilePath(movie.id)
         if (localPath != null && File(localPath).exists()) {
-            // Play offline downloaded video via ExoPlayer
+            // Play offline downloaded video via ExoPlayer directly from storage
             playViaExoPlayer(Uri.fromFile(File(localPath)), movie)
+            return
+        }
+
+        if (!isNetworkConnected()) {
+            binding.progressBar.visibility = View.GONE
+            Toast.makeText(
+                this,
+                "No Internet Connection.\nThis movie is not downloaded for offline playback. Please connect to the internet to stream or download.",
+                Toast.LENGTH_LONG
+            ).show()
             return
         }
 
@@ -355,7 +375,15 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun onPlayerError(error: PlaybackException) {
                 binding.progressBar.visibility = View.GONE
-                fallbackToOnlineStream(movie)
+                if (!isNetworkConnected()) {
+                    Toast.makeText(
+                        this@PlayerActivity,
+                        "Offline Playback Error: Downloaded file is incomplete or unreadable. Please connect to internet to re-download.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    fallbackToOnlineStream(movie)
+                }
             }
         })
 

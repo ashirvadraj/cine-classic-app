@@ -144,6 +144,7 @@ class MovieDetailActivity : AppCompatActivity() {
                         }
                         binding.btnDownloadMovie.text = "Downloading ${currentInfo.progressPercent}%"
                         binding.btnDownloadMovie.setIconResource(R.drawable.ic_download)
+                        binding.btnPlayMovie.text = "Watch Ad-Free"
                     }
                     DownloadManagerHelper.DownloadState.DOWNLOADED -> {
                         binding.cardDownloadProgress.visibility = View.VISIBLE
@@ -154,12 +155,14 @@ class MovieDetailActivity : AppCompatActivity() {
                         binding.tvDownloadProgressBytes.text = "Saved to storage: %.1f MB (Ready for offline playback)".format(totalMb)
                         binding.btnDownloadMovie.text = "Downloaded"
                         binding.btnDownloadMovie.setIconResource(R.drawable.ic_check)
+                        binding.btnPlayMovie.text = "Watch Offline (Downloaded)"
                         break
                     }
                     DownloadManagerHelper.DownloadState.NOT_DOWNLOADED -> {
                         binding.cardDownloadProgress.visibility = View.GONE
                         binding.btnDownloadMovie.text = "Download"
                         binding.btnDownloadMovie.setIconResource(R.drawable.ic_download)
+                        binding.btnPlayMovie.text = "Watch Ad-Free"
                         break
                     }
                 }
