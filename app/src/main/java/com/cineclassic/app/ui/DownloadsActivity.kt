@@ -42,6 +42,7 @@ class DownloadsActivity : AppCompatActivity() {
             onPlayClick = { movie ->
                 val intent = Intent(this, PlayerActivity::class.java).apply {
                     putExtra("movie_id", movie.id)
+                    putExtra("movie_extra", movie)
                 }
                 startActivity(intent)
             },
@@ -76,9 +77,14 @@ class DownloadsActivity : AppCompatActivity() {
     }
 
     private fun refreshDownloads() {
-        val allMovies = repository.getAllMovies()
-        val downloadedOrDownloading = allMovies.filter {
-            val s = downloadHelper.getDownloadState(it.id)
+        val downloadedIds = downloadHelper.getAllDownloadMovieIds()
+        val allCatalog = repository.getAllMovies()
+        val allCandidateIds = (downloadedIds + allCatalog.map { it.id }).distinct()
+
+        val downloadedOrDownloading = allCandidateIds.mapNotNull { id ->
+            repository.getMovieById(id)
+        }.filter { movie ->
+            val s = downloadHelper.getDownloadState(movie.id)
             s == DownloadManagerHelper.DownloadState.DOWNLOADED || s == DownloadManagerHelper.DownloadState.DOWNLOADING
         }
 

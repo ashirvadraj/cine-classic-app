@@ -33,16 +33,20 @@ class MovieDetailActivity : AppCompatActivity() {
         repository = MovieRepository(this)
         downloadHelper = DownloadManagerHelper(this)
 
-        val movieId = intent.getStringExtra("movie_id") ?: run {
+        val movieId = intent.getStringExtra("movie_id") ?: ""
+        val movieExtra = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            intent.getSerializableExtra("movie_extra", Movie::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getSerializableExtra("movie_extra") as? Movie
+        }
+
+        currentMovie = movieExtra ?: repository.getMovieById(movieId) ?: run {
             finish()
             return
         }
 
-        currentMovie = repository.getMovieById(movieId) ?: run {
-            finish()
-            return
-        }
-
+        repository.saveDiscoveredMovie(currentMovie!!)
         bindMovieDetails(currentMovie!!)
     }
 
@@ -83,6 +87,7 @@ class MovieDetailActivity : AppCompatActivity() {
         binding.btnPlayMovie.setOnClickListener {
             val intent = Intent(this, PlayerActivity::class.java).apply {
                 putExtra("movie_id", movie.id)
+                putExtra("movie_extra", movie)
             }
             startActivity(intent)
         }

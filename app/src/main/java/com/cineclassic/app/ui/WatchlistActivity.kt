@@ -26,6 +26,7 @@ class WatchlistActivity : AppCompatActivity() {
         adapter = MovieAdapter(emptyList()) { movie ->
             val intent = Intent(this, MovieDetailActivity::class.java).apply {
                 putExtra("movie_id", movie.id)
+                putExtra("movie_extra", movie)
             }
             startActivity(intent)
         }

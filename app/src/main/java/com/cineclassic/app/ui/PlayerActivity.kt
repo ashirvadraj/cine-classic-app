@@ -22,6 +22,7 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import com.cineclassic.app.R
 import com.cineclassic.app.data.DownloadManagerHelper
 import com.cineclassic.app.data.Movie
 import com.cineclassic.app.data.MovieRepository
@@ -57,35 +58,47 @@ class PlayerActivity : AppCompatActivity() {
         repository = MovieRepository(this)
         downloadHelper = DownloadManagerHelper(this)
 
-        val movieId = intent.getStringExtra("movie_id") ?: run {
+        val movieId = intent.getStringExtra("movie_id") ?: ""
+        val movieExtra = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            intent.getSerializableExtra("movie_extra", Movie::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getSerializableExtra("movie_extra") as? Movie
+        }
+
+        currentMovie = movieExtra ?: repository.getMovieById(movieId) ?: run {
             finish()
             return
         }
 
-        currentMovie = repository.getMovieById(movieId) ?: run {
-            finish()
-            return
-        }
+        repository.saveDiscoveredMovie(currentMovie!!)
+
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                finish()
+            }
+        })
 
         setupHeader(currentMovie!!)
         startPlayback(currentMovie!!)
     }
 
     private fun hideSystemUI() {
-        @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_FULLSCREEN
-                )
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        controller.systemBarsBehavior =
+            androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
     private fun setupHeader(movie: Movie) {
         binding.tvPlayerTitle.text = "${movie.title} (${movie.year})"
         binding.btnPlayerBack.setOnClickListener { finish() }
+
+        // Also connect back button inside native player controls
+        binding.playerView.findViewById<View>(R.id.btnPlayerBack)?.setOnClickListener {
+            finish()
+        }
 
         binding.btnNextStream.setOnClickListener {
             Toast.makeText(this, "Finding next full movie stream...", Toast.LENGTH_SHORT).show()
@@ -150,6 +163,8 @@ class PlayerActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     private fun playViaWebView(videoId: String) {
         currentVideoId = videoId
+        exoPlayer?.stop()
+        exoPlayer?.clearMediaItems()
         binding.playerView.visibility = View.GONE
         binding.webViewPlayer.visibility = View.VISIBLE
 
@@ -231,6 +246,8 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun playViaExoPlayer(uri: Uri, movie: Movie) {
+        binding.webViewPlayer.loadUrl("about:blank")
+        binding.webViewPlayer.stopLoading()
         binding.webViewPlayer.visibility = View.GONE
         binding.playerView.visibility = View.VISIBLE
 
@@ -327,7 +344,13 @@ class PlayerActivity : AppCompatActivity() {
         saveCurrentProgress()
         exoPlayer?.release()
         exoPlayer = null
-        binding.webViewPlayer.destroy()
+        try {
+            binding.webViewPlayer.loadUrl("about:blank")
+            binding.webViewPlayer.stopLoading()
+            binding.webViewPlayer.destroy()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun saveCurrentProgress() {

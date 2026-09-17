@@ -14,7 +14,7 @@ object OnlineMovieSearchService {
 
     fun getCachedMovie(id: String): Movie? = onlineCache[id]
 
-    private val BLACKLIST_KEYWORDS = listOf(
+    val BLACKLIST_KEYWORDS = listOf(
         "review", "trailer", "teaser", "fact", "facts", "unknown fact",
         "reaction", "explained", "explanation", "analysis", "roast",
         "scene", "scenes", "best scene", "fight scene", "making of",
@@ -23,9 +23,74 @@ object OnlineMovieSearchService {
         "full song", "full songs", "box office", "short", "shorts"
     )
 
-    private val PAID_KEYWORDS = listOf(
+    val PAID_KEYWORDS = listOf(
         "buy", "rent", "purchase", "paid", "youtube movies"
     )
+
+    fun cacheMovie(movie: Movie) {
+        onlineCache[movie.id] = movie
+    }
+
+    fun getAllCachedMovies(): List<Movie> = onlineCache.values.toList()
+
+    fun unescapeHtml(text: String): String {
+        return text
+            .replace("&amp;", "&")
+            .replace("&#39;", "'")
+            .replace("&apos;", "'")
+            .replace("&quot;", "\"")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("\\u0026", "&")
+            .replace("\\\"", "\"")
+            .trim()
+    }
+
+    fun isBlacklisted(title: String): Boolean {
+        val titleLower = title.lowercase()
+        return BLACKLIST_KEYWORDS.any { titleLower.contains(it) }
+    }
+
+    fun extractYtInitialData(html: String): String? {
+        val marker = "ytInitialData"
+        val markerIndex = html.indexOf(marker)
+        if (markerIndex == -1) return null
+
+        val equalsIndex = html.indexOf('=', markerIndex + marker.length)
+        if (equalsIndex == -1) return null
+
+        val startIndex = html.indexOf('{', equalsIndex)
+        if (startIndex == -1) return null
+
+        var depth = 0
+        var inString = false
+        var escape = false
+        for (i in startIndex until html.length) {
+            val c = html[i]
+            if (escape) {
+                escape = false
+                continue
+            }
+            if (c == '\\') {
+                escape = true
+                continue
+            }
+            if (c == '"') {
+                inString = !inString
+                continue
+            }
+            if (!inString) {
+                if (c == '{') depth++
+                else if (c == '}') {
+                    depth--
+                    if (depth == 0) {
+                        return html.substring(startIndex, i + 1)
+                    }
+                }
+            }
+        }
+        return null
+    }
 
     suspend fun searchOnlineMovies(query: String): List<Movie> = withContext(Dispatchers.IO) {
         val trimmed = query.trim()
@@ -41,25 +106,24 @@ object OnlineMovieSearchService {
         val minMinutesRequired = if (isSeriesQuery) 20 else 40
 
         // 1. YouTube Search with Long Video Filter (&sp=EgIYAg%253D%253D)
+        var ytConn: HttpURLConnection? = null
         try {
             val encodedQuery = URLEncoder.encode("$trimmed full movie", "UTF-8")
             val ytUrl = URL("https://www.youtube.com/results?search_query=$encodedQuery&sp=EgIYAg%253D%253D")
-            val conn = ytUrl.openConnection() as HttpURLConnection
-            conn.setRequestProperty(
+            ytConn = ytUrl.openConnection() as HttpURLConnection
+            ytConn.setRequestProperty(
                 "User-Agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
-            conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9,hi;q=0.8")
-            conn.connectTimeout = 8000
-            conn.readTimeout = 8000
+            ytConn.setRequestProperty("Accept-Language", "en-US,en;q=0.9,hi;q=0.8")
+            ytConn.connectTimeout = 8000
+            ytConn.readTimeout = 8000
 
-            val html = conn.inputStream.bufferedReader().use { it.readText() }
+            if (ytConn.responseCode == HttpURLConnection.HTTP_OK) {
+                val html = ytConn.inputStream.bufferedReader().use { it.readText() }
 
-            // Extract ytInitialData JSON
-            val ytDataPattern = Pattern.compile("""var ytInitialData = (\{.*?});</script>""")
-            val matcher = ytDataPattern.matcher(html)
-            if (matcher.find()) {
-                val jsonStr = matcher.group(1)
+                // Extract ytInitialData JSON using robust balanced brace extractor
+                val jsonStr = extractYtInitialData(html)
                 if (!jsonStr.isNullOrEmpty()) {
                     val root = JSONObject(jsonStr)
                     val contents = root.optJSONObject("contents")
@@ -79,18 +143,18 @@ object OnlineMovieSearchService {
                                 val vid = v.optString("videoId")
                                 if (vid.length != 11 || seenIds.contains(vid)) continue
 
-                                val title = v.optJSONObject("title")
+                                val rawTitle = v.optJSONObject("title")
                                     ?.optJSONArray("runs")?.optJSONObject(0)?.optString("text") ?: ""
+                                val title = unescapeHtml(rawTitle)
                                 if (title.isBlank()) continue
 
-                                val titleLower = title.lowercase()
-
                                 // Exclude reviews, trailers, facts, etc.
-                                if (BLACKLIST_KEYWORDS.any { titleLower.contains(it) }) continue
+                                if (isBlacklisted(title)) continue
 
                                 // Exclude paid rentals & YouTube Movies
-                                val ownerName = v.optJSONObject("ownerText")
+                                val rawOwner = v.optJSONObject("ownerText")
                                     ?.optJSONArray("runs")?.optJSONObject(0)?.optString("text") ?: ""
+                                val ownerName = unescapeHtml(rawOwner)
                                 if (ownerName.contains("YouTube Movies", ignoreCase = true)) continue
 
                                 val badges = v.optJSONArray("badges")
@@ -113,9 +177,10 @@ object OnlineMovieSearchService {
                                 if (durationMins < minMinutesRequired) continue
 
                                 seenIds.add(vid)
+                                val titleLower = title.lowercase()
                                 val movie = Movie(
                                     id = "yt_$vid",
-                                    title = title.replace("\\u0026", "&").replace("\\\"", "\""),
+                                    title = title,
                                     year = extractYear(title),
                                     language = if (titleLower.contains("hindi") || titleLower.contains("bollywood")) "Hindi" else "English",
                                     genre = if (isSeriesQuery) "Web Series HD" else "Full Movie HD",
@@ -131,7 +196,7 @@ object OnlineMovieSearchService {
                                     fileSizeBytes = 1350000000L
                                 )
                                 results.add(movie)
-                                onlineCache[movie.id] = movie
+                                cacheMovie(movie)
                             }
                         }
                     }
@@ -139,64 +204,71 @@ object OnlineMovieSearchService {
             }
         } catch (e: Exception) {
             e.printStackTrace()
+        } finally {
+            ytConn?.disconnect()
         }
 
         // 2. Archive.org Full Movie Search (for classic cinema)
+        var archiveConn: HttpURLConnection? = null
         try {
             val encodedQuery = URLEncoder.encode("title:($trimmed) AND mediatype:(movies)", "UTF-8")
             val archiveUrl = URL("https://archive.org/advancedsearch.php?q=$encodedQuery&fl[]=identifier,title,year,description&rows=5&output=json")
-            val conn = archiveUrl.openConnection() as HttpURLConnection
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-            conn.connectTimeout = 6000
-            conn.readTimeout = 6000
+            archiveConn = archiveUrl.openConnection() as HttpURLConnection
+            archiveConn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            archiveConn.connectTimeout = 6000
+            archiveConn.readTimeout = 6000
 
-            val jsonText = conn.inputStream.bufferedReader().use { it.readText() }
-            val root = JSONObject(jsonText)
-            val docs = root.optJSONObject("response")?.optJSONArray("docs")
+            if (archiveConn.responseCode == HttpURLConnection.HTTP_OK) {
+                val jsonText = archiveConn.inputStream.bufferedReader().use { it.readText() }
+                val root = JSONObject(jsonText)
+                val docs = root.optJSONObject("response")?.optJSONArray("docs")
 
-            if (docs != null) {
-                for (i in 0 until docs.length()) {
-                    val doc = docs.getJSONObject(i)
-                    val id = doc.optString("identifier")
-                    val title = doc.optString("title")
-                    val year = doc.optInt("year", 1970)
-                    val desc = doc.optString("description", "Public domain classic video archive.")
+                if (docs != null) {
+                    for (i in 0 until docs.length()) {
+                        val doc = docs.getJSONObject(i)
+                        val id = doc.optString("identifier")
+                        val rawTitle = doc.optString("title")
+                        val title = unescapeHtml(rawTitle)
+                        val year = doc.optInt("year", 1970)
+                        val desc = unescapeHtml(doc.optString("description", "Public domain classic video archive."))
 
-                    if (id.isNotEmpty() && !seenIds.contains(id)) {
-                        val titleLower = title.lowercase()
-                        if (BLACKLIST_KEYWORDS.any { titleLower.contains(it) }) continue
+                        if (id.isNotEmpty() && !seenIds.contains(id)) {
+                            if (isBlacklisted(title)) continue
 
-                        seenIds.add(id)
-                        val movie = Movie(
-                            id = "archive_$id",
-                            title = title,
-                            year = if (year > 1900) year else 1970,
-                            language = "Classic",
-                            genre = "Public Domain Archive",
-                            duration = "Full Feature",
-                            director = "Internet Archive Preservation",
-                            cast = listOf("Preserved Classic"),
-                            synopsis = desc.take(250),
-                            rating = "8.0/10",
-                            posterUrl = "https://archive.org/services/img/$id",
-                            backdropUrl = "https://archive.org/services/img/$id",
-                            videoUrl = "archive:$id",
-                            quality = "720p HD",
-                            fileSizeBytes = 900000000L
-                        )
-                        results.add(movie)
-                        onlineCache[movie.id] = movie
+                            seenIds.add(id)
+                            val movie = Movie(
+                                id = "archive_$id",
+                                title = title,
+                                year = if (year > 1900) year else 1970,
+                                language = "Classic",
+                                genre = "Public Domain Archive",
+                                duration = "Full Feature",
+                                director = "Internet Archive Preservation",
+                                cast = listOf("Preserved Classic"),
+                                synopsis = desc.take(250),
+                                rating = "8.0/10",
+                                posterUrl = "https://archive.org/services/img/$id",
+                                backdropUrl = "https://archive.org/services/img/$id",
+                                videoUrl = "archive:$id",
+                                quality = "720p HD",
+                                fileSizeBytes = 900000000L
+                            )
+                            results.add(movie)
+                            cacheMovie(movie)
+                        }
                     }
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
+        } finally {
+            archiveConn?.disconnect()
         }
 
         results
     }
 
-    private fun parseDurationMinutes(dur: String): Int {
+    fun parseDurationMinutes(dur: String): Int {
         val parts = dur.split(":")
         return when (parts.size) {
             3 -> (parts[0].toIntOrNull() ?: 0) * 60 + (parts[1].toIntOrNull() ?: 0)
@@ -205,7 +277,7 @@ object OnlineMovieSearchService {
         }
     }
 
-    private fun formatDurationDisplay(dur: String): String {
+    fun formatDurationDisplay(dur: String): String {
         val parts = dur.split(":")
         return when (parts.size) {
             3 -> "${parts[0]}h ${parts[1]}m"
@@ -214,7 +286,7 @@ object OnlineMovieSearchService {
         }
     }
 
-    private fun extractYear(title: String): Int {
+    fun extractYear(title: String): Int {
         val yearPattern = Pattern.compile("""(19\d\d|20\d\d)""")
         val m = yearPattern.matcher(title)
         return if (m.find()) {

@@ -25,6 +25,11 @@ class MovieAdapter(
             parent,
             false
         )
+        if (parent is RecyclerView && parent.layoutManager is androidx.recyclerview.widget.GridLayoutManager) {
+            val lp = binding.root.layoutParams
+            lp.width = ViewGroup.LayoutParams.MATCH_PARENT
+            binding.root.layoutParams = lp
+        }
         return MovieViewHolder(binding)
     }
 

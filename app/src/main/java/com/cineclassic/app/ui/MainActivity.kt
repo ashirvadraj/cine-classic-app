@@ -72,8 +72,10 @@ class MainActivity : AppCompatActivity() {
             .into(binding.ivHeroBackdrop)
 
         binding.btnHeroPlay.setOnClickListener {
+            repository.saveDiscoveredMovie(featured)
             val intent = Intent(this, PlayerActivity::class.java).apply {
                 putExtra("movie_id", featured.id)
+                putExtra("movie_extra", featured)
             }
             startActivity(intent)
         }
@@ -214,6 +216,7 @@ class MainActivity : AppCompatActivity() {
             delay(400) // Debounce typing
             try {
                 val onlineResults = OnlineMovieSearchService.searchOnlineMovies(query)
+                repository.saveDiscoveredMovies(onlineResults)
                 val combined = ArrayList(localResults)
                 onlineResults.forEach { onlineMovie ->
                     if (combined.none { it.id == onlineMovie.id || it.title.equals(onlineMovie.title, ignoreCase = true) }) {
@@ -238,8 +241,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openMovieDetails(movie: Movie) {
+        repository.saveDiscoveredMovie(movie)
         val intent = Intent(this, MovieDetailActivity::class.java).apply {
             putExtra("movie_id", movie.id)
+            putExtra("movie_extra", movie)
         }
         startActivity(intent)
     }

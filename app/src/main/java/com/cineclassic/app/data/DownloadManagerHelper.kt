@@ -53,33 +53,54 @@ class DownloadManagerHelper(private val context: Context) {
 
         val downloadId = prefs.getLong("dl_id_$movieId", -1L)
         if (downloadId != -1L) {
-            val query = DownloadManager.Query().setFilterById(downloadId)
-            val cursor = downloadManager.query(query)
-            if (cursor != null && cursor.moveToFirst()) {
-                val bytesSoFarIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
-                val totalBytesIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
-                val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+            try {
+                val query = DownloadManager.Query().setFilterById(downloadId)
+                val cursor = downloadManager.query(query)
+                if (cursor != null && cursor.moveToFirst()) {
+                    val bytesSoFarIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                    val totalBytesIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
 
-                val downloaded = if (bytesSoFarIdx != -1) cursor.getLong(bytesSoFarIdx) else 0L
-                val total = if (totalBytesIdx != -1) cursor.getLong(totalBytesIdx) else 0L
-                val status = if (statusIdx != -1) cursor.getInt(statusIdx) else 0
+                    val downloaded = if (bytesSoFarIdx != -1) cursor.getLong(bytesSoFarIdx) else 0L
+                    val total = if (totalBytesIdx != -1) cursor.getLong(totalBytesIdx) else 0L
+                    val status = if (statusIdx != -1) cursor.getInt(statusIdx) else 0
 
-                cursor.close()
+                    cursor.close()
 
-                val state = when (status) {
-                    DownloadManager.STATUS_SUCCESSFUL -> DownloadState.DOWNLOADED
-                    DownloadManager.STATUS_RUNNING, DownloadManager.STATUS_PENDING -> DownloadState.DOWNLOADING
-                    else -> DownloadState.NOT_DOWNLOADED
+                    val state = when (status) {
+                        DownloadManager.STATUS_SUCCESSFUL -> DownloadState.DOWNLOADED
+                        DownloadManager.STATUS_RUNNING, DownloadManager.STATUS_PENDING -> DownloadState.DOWNLOADING
+                        else -> DownloadState.NOT_DOWNLOADED
+                    }
+                    val percent = if (total > 0) ((downloaded * 100) / total).toInt().coerceIn(0, 100) else 0
+                    return DownloadProgressInfo(state, downloaded, total, percent)
                 }
-                val percent = if (total > 0) ((downloaded * 100) / total).toInt() else 0
-                return DownloadProgressInfo(state, downloaded, total, percent)
+                cursor?.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            cursor?.close()
         }
         return DownloadProgressInfo(DownloadState.NOT_DOWNLOADED, 0L, 0L, 0)
     }
 
+    fun getAllDownloadMovieIds(): Set<String> {
+        return prefs.getStringSet("all_download_ids", emptySet()) ?: emptySet()
+    }
+
+    private fun addDownloadMovieId(movieId: String) {
+        val current = prefs.getStringSet("all_download_ids", emptySet())?.toMutableSet() ?: mutableSetOf()
+        current.add(movieId)
+        prefs.edit().putStringSet("all_download_ids", current).apply()
+    }
+
+    private fun removeDownloadMovieId(movieId: String) {
+        val current = prefs.getStringSet("all_download_ids", emptySet())?.toMutableSet() ?: mutableSetOf()
+        current.remove(movieId)
+        prefs.edit().putStringSet("all_download_ids", current).apply()
+    }
+
     fun updateCloudProgress(movieId: String, percent: Int, totalBytes: Long) {
+        addDownloadMovieId(movieId)
         if (percent >= 100) {
             prefs.edit()
                 .putBoolean("dl_cloud_downloading_$movieId", false)
@@ -103,6 +124,7 @@ class DownloadManagerHelper(private val context: Context) {
     }
 
     fun startDownload(movie: Movie): Long {
+        addDownloadMovieId(movie.id)
         if (!movie.videoUrl.startsWith("http://") && !movie.videoUrl.startsWith("https://")) {
             // For cloud/youtube streams, initialize offline cloud download
             prefs.edit()
@@ -137,6 +159,7 @@ class DownloadManagerHelper(private val context: Context) {
     }
 
     fun removeDownload(movieId: String) {
+        removeDownloadMovieId(movieId)
         val downloadId = prefs.getLong("dl_id_$movieId", -1L)
         if (downloadId != -1L && downloadId != 1L) {
             downloadManager.remove(downloadId)
