@@ -37,6 +37,7 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var repository: MovieRepository
     private lateinit var downloadHelper: DownloadManagerHelper
     private var currentMovie: Movie? = null
+    private var currentVideoId: String = ""
 
     private val hideHandler = Handler(Looper.getMainLooper())
     private val hideRunnable = Runnable {
@@ -86,6 +87,11 @@ class PlayerActivity : AppCompatActivity() {
         binding.tvPlayerTitle.text = "${movie.title} (${movie.year})"
         binding.btnPlayerBack.setOnClickListener { finish() }
 
+        binding.btnNextStream.setOnClickListener {
+            Toast.makeText(this, "Finding next full movie stream...", Toast.LENGTH_SHORT).show()
+            fallbackToOnlineStream(movie)
+        }
+
         binding.root.setOnClickListener {
             toggleHeader()
         }
@@ -122,7 +128,8 @@ class PlayerActivity : AppCompatActivity() {
         when {
             videoUrl.startsWith("youtube:") -> {
                 val videoId = videoUrl.removePrefix("youtube:")
-                playViaWebView(videoId, movie)
+                currentVideoId = videoId
+                playViaWebView(videoId)
             }
             videoUrl.startsWith("archive:") -> {
                 val archiveId = videoUrl.removePrefix("archive:")
@@ -130,7 +137,8 @@ class PlayerActivity : AppCompatActivity() {
             }
             videoUrl.contains("youtube.com") || videoUrl.contains("youtu.be") -> {
                 val videoId = extractYouTubeId(videoUrl)
-                playViaWebView(videoId, movie)
+                currentVideoId = videoId
+                playViaWebView(videoId)
             }
             else -> {
                 // Direct stream URL (MP4 / HLS)
@@ -140,7 +148,8 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun playViaWebView(videoId: String, movie: Movie) {
+    private fun playViaWebView(videoId: String) {
+        currentVideoId = videoId
         binding.playerView.visibility = View.GONE
         binding.webViewPlayer.visibility = View.VISIBLE
 
@@ -171,13 +180,11 @@ class PlayerActivity : AppCompatActivity() {
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                // Keep playback strictly in player and block ad redirects
                 val url = request?.url?.toString() ?: ""
                 return !url.contains("youtube-nocookie.com") && !url.contains("youtube.com")
             }
         }
 
-        // Embed with ad-free, modest branding, and auto-play parameters
         val html = """
             <!DOCTYPE html>
             <html>
@@ -191,7 +198,7 @@ class PlayerActivity : AppCompatActivity() {
             </head>
             <body>
                 <iframe 
-                    src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&controls=1&modestbranding=1&rel=0&fs=1&playsinline=1&iv_load_policy=3" 
+                    src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&controls=1&modestbranding=1&rel=0&fs=1&playsinline=1&iv_load_policy=3&origin=https://www.youtube-nocookie.com" 
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                     allowfullscreen>
                 </iframe>
@@ -264,7 +271,6 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun onPlayerError(error: PlaybackException) {
                 binding.progressBar.visibility = View.GONE
-                // Automatic fallback: Stream alternative source
                 fallbackToOnlineStream(movie)
             }
         })
@@ -274,21 +280,24 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun fallbackToOnlineStream(movie: Movie) {
-        Toast.makeText(this, "Connecting to HD backup stream...", Toast.LENGTH_SHORT).show()
         binding.progressBar.visibility = View.VISIBLE
 
         lifecycleScope.launch {
             try {
                 val onlineMatches = OnlineMovieSearchService.searchOnlineMovies(movie.title)
-                val fallbackMovie = onlineMatches.firstOrNull()
-                if (fallbackMovie != null && fallbackMovie.videoUrl.startsWith("youtube:")) {
-                    val vid = fallbackMovie.videoUrl.removePrefix("youtube:")
-                    playViaWebView(vid, movie)
+                val fallback = onlineMatches.firstOrNull { it.videoUrl.removePrefix("youtube:") != currentVideoId }
+                if (fallback != null && fallback.videoUrl.startsWith("youtube:")) {
+                    val vid = fallback.videoUrl.removePrefix("youtube:")
+                    Toast.makeText(this@PlayerActivity, "Switched to: ${fallback.title.take(30)}...", Toast.LENGTH_SHORT).show()
+                    playViaWebView(vid)
+                } else if (onlineMatches.isNotEmpty()) {
+                    val vid = onlineMatches.first().videoUrl.removePrefix("youtube:")
+                    playViaWebView(vid)
                 } else {
-                    Toast.makeText(this@PlayerActivity, "Playback error on this stream. Please try another source.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@PlayerActivity, "No alternative free stream found", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(this@PlayerActivity, "Error playing stream", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@PlayerActivity, "Error finding alternative stream", Toast.LENGTH_SHORT).show()
             }
         }
     }

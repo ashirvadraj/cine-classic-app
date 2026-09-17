@@ -17,10 +17,38 @@ class DownloadManagerHelper(private val context: Context) {
         DOWNLOADED
     }
 
+    data class DownloadProgressInfo(
+        val state: DownloadState,
+        val downloadedBytes: Long,
+        val totalBytes: Long,
+        val progressPercent: Int
+    )
+
     fun getDownloadState(movieId: String): DownloadState {
+        return getDownloadProgress(movieId).state
+    }
+
+    fun getDownloadProgress(movieId: String): DownloadProgressInfo {
         val localPath = prefs.getString("dl_path_$movieId", null)
         if (localPath != null && File(localPath).exists()) {
-            return DownloadState.DOWNLOADED
+            val f = File(localPath)
+            return DownloadProgressInfo(DownloadState.DOWNLOADED, f.length(), f.length(), 100)
+        }
+
+        // Check cloud stream saved
+        val isCloudSaved = prefs.getBoolean("dl_cloud_done_$movieId", false)
+        if (isCloudSaved) {
+            val total = prefs.getLong("dl_total_bytes_$movieId", 1250000000L)
+            return DownloadProgressInfo(DownloadState.DOWNLOADED, total, total, 100)
+        }
+
+        val isCloudDownloading = prefs.getBoolean("dl_cloud_downloading_$movieId", false)
+        if (isCloudDownloading) {
+            val prog = prefs.getInt("dl_cloud_prog_$movieId", 0)
+            val total = prefs.getLong("dl_total_bytes_$movieId", 1250000000L)
+            val current = (total * prog) / 100
+            val state = if (prog >= 100) DownloadState.DOWNLOADED else DownloadState.DOWNLOADING
+            return DownloadProgressInfo(state, current, total, prog)
         }
 
         val downloadId = prefs.getLong("dl_id_$movieId", -1L)
@@ -28,23 +56,45 @@ class DownloadManagerHelper(private val context: Context) {
             val query = DownloadManager.Query().setFilterById(downloadId)
             val cursor = downloadManager.query(query)
             if (cursor != null && cursor.moveToFirst()) {
-                val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                if (statusIndex != -1) {
-                    when (cursor.getInt(statusIndex)) {
-                        DownloadManager.STATUS_SUCCESSFUL -> {
-                            cursor.close()
-                            return DownloadState.DOWNLOADED
-                        }
-                        DownloadManager.STATUS_RUNNING, DownloadManager.STATUS_PENDING -> {
-                            cursor.close()
-                            return DownloadState.DOWNLOADING
-                        }
-                    }
-                }
+                val bytesSoFarIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                val totalBytesIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+
+                val downloaded = if (bytesSoFarIdx != -1) cursor.getLong(bytesSoFarIdx) else 0L
+                val total = if (totalBytesIdx != -1) cursor.getLong(totalBytesIdx) else 0L
+                val status = if (statusIdx != -1) cursor.getInt(statusIdx) else 0
+
                 cursor.close()
+
+                val state = when (status) {
+                    DownloadManager.STATUS_SUCCESSFUL -> DownloadState.DOWNLOADED
+                    DownloadManager.STATUS_RUNNING, DownloadManager.STATUS_PENDING -> DownloadState.DOWNLOADING
+                    else -> DownloadState.NOT_DOWNLOADED
+                }
+                val percent = if (total > 0) ((downloaded * 100) / total).toInt() else 0
+                return DownloadProgressInfo(state, downloaded, total, percent)
             }
+            cursor?.close()
         }
-        return DownloadState.NOT_DOWNLOADED
+        return DownloadProgressInfo(DownloadState.NOT_DOWNLOADED, 0L, 0L, 0)
+    }
+
+    fun updateCloudProgress(movieId: String, percent: Int, totalBytes: Long) {
+        if (percent >= 100) {
+            prefs.edit()
+                .putBoolean("dl_cloud_downloading_$movieId", false)
+                .putBoolean("dl_cloud_done_$movieId", true)
+                .putInt("dl_cloud_prog_$movieId", 100)
+                .putLong("dl_total_bytes_$movieId", totalBytes)
+                .apply()
+        } else {
+            prefs.edit()
+                .putBoolean("dl_cloud_downloading_$movieId", true)
+                .putBoolean("dl_cloud_done_$movieId", false)
+                .putInt("dl_cloud_prog_$movieId", percent)
+                .putLong("dl_total_bytes_$movieId", totalBytes)
+                .apply()
+        }
     }
 
     fun getLocalFilePath(movieId: String): String? {
@@ -54,9 +104,12 @@ class DownloadManagerHelper(private val context: Context) {
 
     fun startDownload(movie: Movie): Long {
         if (!movie.videoUrl.startsWith("http://") && !movie.videoUrl.startsWith("https://")) {
-            // For cloud/youtube streams, mark as offline bookmarked stream
+            // For cloud/youtube streams, initialize offline cloud download
             prefs.edit()
-                .putString("dl_path_${movie.id}", "cloud_stream")
+                .putBoolean("dl_cloud_downloading_${movie.id}", true)
+                .putBoolean("dl_cloud_done_${movie.id}", false)
+                .putInt("dl_cloud_prog_${movie.id}", 0)
+                .putLong("dl_total_bytes_${movie.id}", movie.fileSizeBytes)
                 .apply()
             return 1L
         }
@@ -96,6 +149,10 @@ class DownloadManagerHelper(private val context: Context) {
         prefs.edit()
             .remove("dl_id_$movieId")
             .remove("dl_path_$movieId")
+            .remove("dl_cloud_downloading_$movieId")
+            .remove("dl_cloud_done_$movieId")
+            .remove("dl_cloud_prog_$movieId")
+            .remove("dl_total_bytes_$movieId")
             .apply()
     }
 }

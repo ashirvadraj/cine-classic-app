@@ -52,6 +52,22 @@
             app:layout_constraintStart_toEndOf="@id/ivDownloadPoster"
             app:layout_constraintTop_toBottomOf="@id/tvDownloadTitle" />
 
+        <ProgressBar
+            android:id="@+id/pbItemProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="6dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="8dp"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="@color/primary"
+            android:visibility="gone"
+            app:layout_constraintEnd_toStartOf="@id/btnDeleteDownload"
+            app:layout_constraintStart_toEndOf="@id/ivDownloadPoster"
+            app:layout_constraintTop_toBottomOf="@id/tvDownloadInfo" />
+
         <TextView
             android:id="@+id/tvDownloadStatus"
             android:layout_width="wrap_content"
@@ -65,7 +81,7 @@
             android:textColor="@color/status_completed"
             android:textSize="11sp"
             app:layout_constraintStart_toEndOf="@id/ivDownloadPoster"
-            app:layout_constraintTop_toBottomOf="@id/tvDownloadInfo" />
+            app:layout_constraintTop_toBottomOf="@id/pbItemProgress" />
 
         <ImageButton
             android:id="@+id/btnPlayOffline"

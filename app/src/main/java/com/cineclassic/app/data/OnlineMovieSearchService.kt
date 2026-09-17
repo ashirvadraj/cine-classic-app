@@ -14,6 +14,19 @@ object OnlineMovieSearchService {
 
     fun getCachedMovie(id: String): Movie? = onlineCache[id]
 
+    private val BLACKLIST_KEYWORDS = listOf(
+        "review", "trailer", "teaser", "fact", "facts", "unknown fact",
+        "reaction", "explained", "explanation", "analysis", "roast",
+        "scene", "scenes", "best scene", "fight scene", "making of",
+        "behind the scene", "status", "spoiler", "preview", "interview",
+        "tribute", "parody", "jukebox", "audio song", "video song",
+        "full song", "full songs", "box office", "short", "shorts"
+    )
+
+    private val PAID_KEYWORDS = listOf(
+        "buy", "rent", "purchase", "paid", "youtube movies"
+    )
+
     suspend fun searchOnlineMovies(query: String): List<Movie> = withContext(Dispatchers.IO) {
         val trimmed = query.trim()
         if (trimmed.length < 2) return@withContext emptyList()
@@ -21,10 +34,16 @@ object OnlineMovieSearchService {
         val results = mutableListOf<Movie>()
         val seenIds = mutableSetOf<String>()
 
-        // 1. YouTube Full Movie Search
+        val isSeriesQuery = trimmed.contains("series", ignoreCase = true) ||
+                trimmed.contains("episode", ignoreCase = true) ||
+                trimmed.contains("season", ignoreCase = true)
+
+        val minMinutesRequired = if (isSeriesQuery) 20 else 40
+
+        // 1. YouTube Search with Long Video Filter (&sp=EgIYAg%253D%253D)
         try {
             val encodedQuery = URLEncoder.encode("$trimmed full movie", "UTF-8")
-            val ytUrl = URL("https://www.youtube.com/results?search_query=$encodedQuery")
+            val ytUrl = URL("https://www.youtube.com/results?search_query=$encodedQuery&sp=EgIYAg%253D%253D")
             val conn = ytUrl.openConnection() as HttpURLConnection
             conn.setRequestProperty(
                 "User-Agent",
@@ -36,45 +55,93 @@ object OnlineMovieSearchService {
 
             val html = conn.inputStream.bufferedReader().use { it.readText() }
 
-            val regex = Pattern.compile(""""videoId":"([a-zA-Z0-9_-]{11})".*?"title":\{"runs":\[\{"text":"(.*?)"\}\]\}""")
-            val matcher = regex.matcher(html)
+            // Extract ytInitialData JSON
+            val ytDataPattern = Pattern.compile("""var ytInitialData = (\{.*?});</script>""")
+            val matcher = ytDataPattern.matcher(html)
+            if (matcher.find()) {
+                val jsonStr = matcher.group(1)
+                if (!jsonStr.isNullOrEmpty()) {
+                    val root = JSONObject(jsonStr)
+                    val contents = root.optJSONObject("contents")
+                        ?.optJSONObject("twoColumnSearchResultsRenderer")
+                        ?.optJSONObject("primaryContents")
+                        ?.optJSONObject("sectionListRenderer")
+                        ?.optJSONArray("contents")
 
-            var count = 0
-            while (matcher.find() && count < 15) {
-                val vid = matcher.group(1) ?: continue
-                val rawTitle = matcher.group(2) ?: continue
-                val cleanTitle = rawTitle.replace("\\u0026", "&").replace("\\\"", "\"")
+                    if (contents != null) {
+                        for (sIdx in 0 until contents.length()) {
+                            val section = contents.optJSONObject(sIdx)
+                            val items = section?.optJSONObject("itemSectionRenderer")?.optJSONArray("contents") ?: continue
+                            for (iIdx in 0 until items.length()) {
+                                val item = items.optJSONObject(iIdx) ?: continue
+                                val v = item.optJSONObject("videoRenderer") ?: continue
 
-                // Filter out irrelevant search filter chips or duplicates
-                if (vid.length == 11 && !seenIds.contains(vid) && !cleanTitle.equals("Search filters", ignoreCase = true)) {
-                    seenIds.add(vid)
-                    val movie = Movie(
-                        id = "yt_$vid",
-                        title = cleanTitle,
-                        year = extractYear(cleanTitle),
-                        language = if (cleanTitle.contains("hindi", ignoreCase = true)) "Hindi" else "English",
-                        genre = "Classic Cinema / Web",
-                        duration = "Full HD Movie",
-                        director = "Universal Classic Stream",
-                        cast = listOf("Online Streaming HD"),
-                        synopsis = "Watch $cleanTitle completely ad-free in High Definition streaming.",
-                        rating = "8.2/10",
-                        posterUrl = "https://i.ytimg.com/vi/$vid/hqdefault.jpg",
-                        backdropUrl = "https://i.ytimg.com/vi/$vid/hqdefault.jpg",
-                        videoUrl = "youtube:$vid",
-                        quality = "1080p Full HD",
-                        fileSizeBytes = 1250000000L
-                    )
-                    results.add(movie)
-                    onlineCache[movie.id] = movie
-                    count++
+                                val vid = v.optString("videoId")
+                                if (vid.length != 11 || seenIds.contains(vid)) continue
+
+                                val title = v.optJSONObject("title")
+                                    ?.optJSONArray("runs")?.optJSONObject(0)?.optString("text") ?: ""
+                                if (title.isBlank()) continue
+
+                                val titleLower = title.lowercase()
+
+                                // Exclude reviews, trailers, facts, etc.
+                                if (BLACKLIST_KEYWORDS.any { titleLower.contains(it) }) continue
+
+                                // Exclude paid rentals & YouTube Movies
+                                val ownerName = v.optJSONObject("ownerText")
+                                    ?.optJSONArray("runs")?.optJSONObject(0)?.optString("text") ?: ""
+                                if (ownerName.contains("YouTube Movies", ignoreCase = true)) continue
+
+                                val badges = v.optJSONArray("badges")
+                                var isPaid = false
+                                if (badges != null) {
+                                    for (bIdx in 0 until badges.length()) {
+                                        val badgeLabel = badges.optJSONObject(bIdx)
+                                            ?.optJSONObject("metadataBadgeRenderer")?.optString("label") ?: ""
+                                        if (PAID_KEYWORDS.any { badgeLabel.lowercase().contains(it) }) {
+                                            isPaid = true
+                                            break
+                                        }
+                                    }
+                                }
+                                if (isPaid) continue
+
+                                // Duration check
+                                val durText = v.optJSONObject("lengthText")?.optString("simpleText") ?: ""
+                                val durationMins = parseDurationMinutes(durText)
+                                if (durationMins < minMinutesRequired) continue
+
+                                seenIds.add(vid)
+                                val movie = Movie(
+                                    id = "yt_$vid",
+                                    title = title.replace("\\u0026", "&").replace("\\\"", "\""),
+                                    year = extractYear(title),
+                                    language = if (titleLower.contains("hindi") || titleLower.contains("bollywood")) "Hindi" else "English",
+                                    genre = if (isSeriesQuery) "Web Series HD" else "Full Movie HD",
+                                    duration = if (durText.isNotBlank()) formatDurationDisplay(durText) else "Full Feature",
+                                    director = if (ownerName.isNotBlank()) ownerName else "HD Cinema Stream",
+                                    cast = listOf("Full HD Feature"),
+                                    synopsis = "Watch $title in 1080p High Definition completely ad-free. No payment or subscription required.",
+                                    rating = "8.4/10",
+                                    posterUrl = "https://i.ytimg.com/vi/$vid/hqdefault.jpg",
+                                    backdropUrl = "https://i.ytimg.com/vi/$vid/hqdefault.jpg",
+                                    videoUrl = "youtube:$vid",
+                                    quality = "1080p Full HD",
+                                    fileSizeBytes = 1350000000L
+                                )
+                                results.add(movie)
+                                onlineCache[movie.id] = movie
+                            }
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
-        // 2. Archive.org Search
+        // 2. Archive.org Full Movie Search (for classic cinema)
         try {
             val encodedQuery = URLEncoder.encode("title:($trimmed) AND mediatype:(movies)", "UTF-8")
             val archiveUrl = URL("https://archive.org/advancedsearch.php?q=$encodedQuery&fl[]=identifier,title,year,description&rows=5&output=json")
@@ -96,6 +163,9 @@ object OnlineMovieSearchService {
                     val desc = doc.optString("description", "Public domain classic video archive.")
 
                     if (id.isNotEmpty() && !seenIds.contains(id)) {
+                        val titleLower = title.lowercase()
+                        if (BLACKLIST_KEYWORDS.any { titleLower.contains(it) }) continue
+
                         seenIds.add(id)
                         val movie = Movie(
                             id = "archive_$id",
@@ -124,6 +194,24 @@ object OnlineMovieSearchService {
         }
 
         results
+    }
+
+    private fun parseDurationMinutes(dur: String): Int {
+        val parts = dur.split(":")
+        return when (parts.size) {
+            3 -> (parts[0].toIntOrNull() ?: 0) * 60 + (parts[1].toIntOrNull() ?: 0)
+            2 -> parts[0].toIntOrNull() ?: 0
+            else -> 0
+        }
+    }
+
+    private fun formatDurationDisplay(dur: String): String {
+        val parts = dur.split(":")
+        return when (parts.size) {
+            3 -> "${parts[0]}h ${parts[1]}m"
+            2 -> "${parts[0]} min"
+            else -> dur
+        }
     }
 
     private fun extractYear(title: String): Int {

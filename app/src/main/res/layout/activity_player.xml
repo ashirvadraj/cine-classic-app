@@ -24,7 +24,7 @@
         android:layout_height="match_parent"
         android:visibility="visible" />
 
-    <!-- Top Controls Overlay (Back button, Title, Ad-Free Badge) -->
+    <!-- Top Controls Overlay (Back button, Title, Next Stream, Ad-Free Badge) -->
     <LinearLayout
         android:id="@+id/llPlayerHeader"
         android:layout_width="match_parent"
@@ -54,6 +54,18 @@
             android:textColor="@color/text_primary"
             android:textSize="16sp"
             android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNextStream"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginEnd="10dp"
+            android:text="Next Stream"
+            android:textColor="@color/text_primary"
+            android:textSize="11sp"
+            app:cornerRadius="18dp"
+            app:strokeColor="@color/text_secondary" />
 
         <TextView
             android:layout_width="wrap_content"
