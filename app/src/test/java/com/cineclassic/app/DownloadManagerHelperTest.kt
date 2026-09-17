@@ -6,27 +6,26 @@ import org.junit.Test
 
 class DownloadManagerHelperTest {
 
+    private fun calculatePercent(downloaded: Long, total: Long): Int {
+        if (total <= 0L) return 0
+        return ((downloaded * 100) / total).toInt().coerceIn(0, 100)
+    }
+
     @Test
     fun testDownloadProgressPercentCalculations() {
-        val total = 1000L
-        val downloaded = 450L
-        val percent = ((downloaded * 100) / total).toInt().coerceIn(0, 100)
+        val percent = calculatePercent(450L, 1000L)
         assertEquals(45, percent)
     }
 
     @Test
     fun testZeroTotalBytesDoesNotDivideByZero() {
-        val total = 0L
-        val downloaded = 0L
-        val percent = if (total > 0) ((downloaded * 100) / total).toInt().coerceIn(0, 100) else 0
+        val percent = calculatePercent(0L, 0L)
         assertEquals(0, percent)
     }
 
     @Test
     fun testCompletedProgressCapsAt100() {
-        val total = 1000L
-        val downloaded = 1200L
-        val percent = if (total > 0) ((downloaded * 100) / total).toInt().coerceIn(0, 100) else 0
+        val percent = calculatePercent(1200L, 1000L)
         assertEquals(100, percent)
     }
 }
