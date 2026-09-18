@@ -50,6 +50,7 @@ class PlayerActivity : AppCompatActivity() {
     private var currentDurationMs: Long = 0L
     private var hasShownResumeToast: Boolean = false
     private var progressSaveJob: Job? = null
+    private var youtubeWatchJob: Job? = null
 
     private val hideHandler = Handler(Looper.getMainLooper())
     private val hideRunnable = Runnable {
@@ -258,12 +259,15 @@ class PlayerActivity : AppCompatActivity() {
         currentVideoId = videoId
         exoPlayer?.stop()
         exoPlayer?.clearMediaItems()
+        progressSaveJob?.cancel()
+        youtubeWatchJob?.cancel()
         binding.playerView.visibility = View.GONE
         binding.webViewPlayer.visibility = View.VISIBLE
 
         val movie = currentMovie
         val lastSavedMs = if (movie != null) repository.getProgress(movie.id) else 0L
         val startSeconds = if (lastSavedMs > 5000L) (lastSavedMs / 1000L).toInt() else 0
+        currentPositionMs = if (startSeconds > 0) startSeconds * 1000L else 0L
 
         val webView = binding.webViewPlayer
         val settings = webView.settings
@@ -273,32 +277,19 @@ class PlayerActivity : AppCompatActivity() {
         settings.loadWithOverviewMode = true
         settings.useWideViewPort = true
         settings.cacheMode = WebSettings.LOAD_DEFAULT
+        settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36"
 
         webView.addJavascriptInterface(object {
             @android.webkit.JavascriptInterface
             fun onTimeUpdate(currentTimeSeconds: Float, durationSeconds: Float) {
                 val posMs = (currentTimeSeconds * 1000L).toLong()
                 val durMs = (durationSeconds * 1000L).toLong()
-                currentPositionMs = posMs
-                if (durMs > 0L) currentDurationMs = durMs
+                if (posMs > 0) currentPositionMs = posMs
+                if (durMs > 0) currentDurationMs = durMs
 
                 currentMovie?.let { m ->
                     if (posMs > 5000L) {
                         repository.saveProgress(m.id, posMs, durMs)
-                    }
-                }
-            }
-
-            @android.webkit.JavascriptInterface
-            fun onPlayerReady(durationSeconds: Float) {
-                val durMs = (durationSeconds * 1000L).toLong()
-                if (durMs > 0L) currentDurationMs = durMs
-                runOnUiThread {
-                    binding.progressBar.visibility = View.GONE
-                    if (startSeconds > 5 && !hasShownResumeToast) {
-                        hasShownResumeToast = true
-                        val formatted = formatDuration(startSeconds * 1000L)
-                        Toast.makeText(this@PlayerActivity, "🎬 Resumed from $formatted", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -315,7 +306,7 @@ class PlayerActivity : AppCompatActivity() {
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                if (newProgress > 70) {
+                if (newProgress > 60) {
                     binding.progressBar.visibility = View.GONE
                 }
             }
@@ -328,13 +319,21 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 binding.progressBar.visibility = View.GONE
+                if (startSeconds > 5 && !hasShownResumeToast) {
+                    hasShownResumeToast = true
+                    val formatted = formatDuration(startSeconds * 1000L)
+                    Toast.makeText(this@PlayerActivity, "🎬 Resumed from $formatted", Toast.LENGTH_SHORT).show()
+                }
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: ""
-                return !url.contains("youtube-nocookie.com") && !url.contains("youtube.com")
+                return !url.contains("youtube-nocookie.com") && !url.contains("youtube.com") && !url.contains("googlevideo.com")
             }
         }
+
+        val startParam = if (startSeconds > 5) "&start=$startSeconds" else ""
+        val embedUrl = "https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&controls=1&enablejsapi=1$startParam&modestbranding=1&rel=0&fs=1&playsinline=1&iv_load_policy=3&cc_load_policy=0&origin=https://www.youtube-nocookie.com"
 
         val html = """
             <!DOCTYPE html>
@@ -344,85 +343,62 @@ class PlayerActivity : AppCompatActivity() {
                 <style>
                     * { margin:0; padding:0; box-sizing:border-box; background:#000000; overflow:hidden; }
                     html, body { width:100%; height:100%; background:#000000; }
-                    #player { width:100%; height:100%; }
+                    iframe { width:100%; height:100%; border:none; }
                 </style>
             </head>
             <body>
-                <div id="player"></div>
+                <iframe 
+                    id="ytPlayer"
+                    src="$embedUrl" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
                 <script>
-                    var tag = document.createElement('script');
-                    tag.src = "https://www.youtube.com/iframe_api";
-                    var firstScriptTag = document.getElementsByTagName('script')[0];
-                    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-                    var player;
-                    var timer = null;
-
-                    function onYouTubeIframeAPIReady() {
-                        player = new YT.Player('player', {
-                            width: '100%',
-                            height: '100%',
-                            videoId: '$videoId',
-                            playerVars: {
-                                'autoplay': 1,
-                                'controls': 1,
-                                'modestbranding': 1,
-                                'rel': 0,
-                                'fs': 1,
-                                'playsinline': 1,
-                                'start': $startSeconds,
-                                'iv_load_policy': 3,
-                                'cc_load_policy': 0,
-                                'origin': 'https://www.youtube.com'
-                            },
-                            events: {
-                                'onReady': onPlayerReady,
-                                'onStateChange': onPlayerStateChange
-                            }
-                        });
-                    }
-
-                    function onPlayerReady(event) {
+                    window.addEventListener("message", function(event) {
                         try {
-                            var dur = player.getDuration ? player.getDuration() : 0;
-                            if (window.AndroidBridge) {
-                                window.AndroidBridge.onPlayerReady(dur);
-                            }
-                        } catch(e) {}
-                    }
-
-                    function reportProgress() {
-                        if (player && player.getCurrentTime) {
-                            try {
-                                var curr = player.getCurrentTime();
-                                var dur = player.getDuration ? player.getDuration() : 0;
-                                if (window.AndroidBridge && curr > 0) {
+                            var data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+                            if (data && data.event === "infoDelivery" && data.info) {
+                                var curr = data.info.currentTime;
+                                var dur = data.info.duration || 0;
+                                if (curr !== undefined && curr > 0 && window.AndroidBridge) {
                                     window.AndroidBridge.onTimeUpdate(curr, dur);
                                 }
-                            } catch(e) {}
-                        }
-                    }
+                            } else if (data && data.event === "onStateChange" && data.info === 0) {
+                                if (window.AndroidBridge) {
+                                    window.AndroidBridge.onMovieEnded();
+                                }
+                            }
+                        } catch(e) {}
+                    });
 
-                    function onPlayerStateChange(event) {
-                        if (event.data == YT.PlayerState.PLAYING) {
-                            if (!timer) {
-                                timer = setInterval(reportProgress, 2000);
+                    // Periodically request listening
+                    setInterval(function() {
+                        try {
+                            var ifr = document.getElementById("ytPlayer");
+                            if (ifr && ifr.contentWindow) {
+                                ifr.contentWindow.postMessage('{"event":"listening"}', '*');
                             }
-                        } else if (event.data == YT.PlayerState.PAUSED) {
-                            reportProgress();
-                        } else if (event.data == YT.PlayerState.ENDED) {
-                            if (timer) { clearInterval(timer); timer = null; }
-                            if (window.AndroidBridge) {
-                                window.AndroidBridge.onMovieEnded();
-                            }
-                        }
-                    }
+                        } catch(e) {}
+                    }, 2000);
                 </script>
             </body>
             </html>
         """.trimIndent()
 
-        webView.loadDataWithBaseURL("https://www.youtube.com", html, "text/html", "UTF-8", null)
+        webView.loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "UTF-8", null)
+
+        // Continuous progress tracking coroutine while active in foreground
+        youtubeWatchJob = lifecycleScope.launch {
+            while (isActive) {
+                delay(2000)
+                currentPositionMs += 2000L
+                currentMovie?.let { m ->
+                    if (currentPositionMs > 5000L) {
+                        repository.saveProgress(m.id, currentPositionMs, currentDurationMs)
+                    }
+                }
+            }
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -579,9 +555,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         progressSaveJob?.cancel()
-        try {
-            binding.webViewPlayer.evaluateJavascript("if (typeof reportProgress === 'function') { reportProgress(); }", null)
-        } catch (e: Exception) {}
+        youtubeWatchJob?.cancel()
         saveCurrentProgress()
         exoPlayer?.pause()
         binding.webViewPlayer.onPause()
@@ -595,6 +569,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         progressSaveJob?.cancel()
+        youtubeWatchJob?.cancel()
         saveCurrentProgress()
         exoPlayer?.release()
         exoPlayer = null

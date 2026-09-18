@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity() {
 
     private var activeFilter = "ALL"
     private var onlineSearchJob: Job? = null
+    private var currentFeaturedMovie: Movie? = null
 
     private val voiceSearchLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -122,8 +123,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupHeroBanner() {
         val movies = repository.getAllMovies()
-        // Feature Zanjeer 1973 (Amitabh Bachchan classic) or top classic
-        val featured = repository.getMovieById("hindi_zanjeer_1973") ?: movies.firstOrNull() ?: return
+        // Strictly exclude any movie matching Zanjeer so it NEVER appears as featured
+        val nonZanjeer = movies.filter {
+            !it.id.contains("zanjeer", ignoreCase = true) &&
+            !it.title.contains("zanjeer", ignoreCase = true)
+        }
+        val featured = if (currentFeaturedMovie != null && nonZanjeer.size > 1) {
+            nonZanjeer.filter { it.id != currentFeaturedMovie?.id }.randomOrNull() ?: nonZanjeer.random()
+        } else {
+            nonZanjeer.randomOrNull() ?: movies.firstOrNull() ?: return
+        }
+        currentFeaturedMovie = featured
 
         binding.tvHeroTitle.text = featured.displayTitleWithYear
         binding.tvHeroDesc.text = "${featured.director} • ${featured.castFormatted}"
@@ -131,6 +141,10 @@ class MainActivity : AppCompatActivity() {
         Glide.with(this)
             .load(featured.backdropUrl)
             .into(binding.ivHeroBackdrop)
+
+        binding.btnHeroShuffle.setOnClickListener {
+            setupHeroBanner()
+        }
 
         binding.btnHeroPlay.setOnClickListener {
             repository.saveDiscoveredMovie(featured)

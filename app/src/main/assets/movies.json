@@ -1,22 +1,5 @@
 [
   {
-    "id": "hindi_zanjeer_1973",
-    "title": "Zanjeer (1973 Original Classic)",
-    "year": 1973,
-    "language": "Hindi",
-    "genre": "Action / Crime / Drama",
-    "duration": "2h 22m",
-    "director": "Prakash Mehra",
-    "cast": ["Amitabh Bachchan", "Jaya Bhaduri", "Pran", "Ajit"],
-    "synopsis": "The landmark film that established Amitabh Bachchan as the Angry Young Man. Inspector Vijay battles nightmares of his parents murder and takes down the crime syndicate led by Teja. Co-starring Pran and Jaya Bhaduri. Zanjeer, Zanzeer 1973.",
-    "rating": "8.0/10",
-    "posterUrl": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80",
-    "backdropUrl": "https://images.unsplash.com/photo-1574267432553-4b4628081c31?w=1200&q=80",
-    "videoUrl": "https://archive.org/download/zanjeer-1973-hindi.-dv-drip.-720p.-avc.x-264.-aac-dd-5.1.-arabic.-esubs.-extra-movies.-by-juleyano/Zanjeer%20%281973%29%20Hindi.DvDRip.720p.AVC.x264.AAC%2CDD5.1.Arabic.ESubs.ExtraMovies.BY%20Juleyano.mp4",
-    "quality": "720p Restored",
-    "fileSizeBytes": 825946408
-  },
-  {
     "id": "hindi_01",
     "title": "Awara",
     "year": 1951,
@@ -24,7 +7,11 @@
     "genre": "Drama / Romance",
     "duration": "2h 48m",
     "director": "Raj Kapoor",
-    "cast": ["Raj Kapoor", "Nargis", "Prithviraj Kapoor"],
+    "cast": [
+      "Raj Kapoor",
+      "Nargis",
+      "Prithviraj Kapoor"
+    ],
     "synopsis": "A poor young man named Raj turns to petty crime due to circumstances and prejudice, not knowing that the wealthy judge who condemns him is his estranged biological father.",
     "rating": "8.0/10",
     "posterUrl": "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80",
@@ -41,7 +28,12 @@
     "genre": "Epic / Drama",
     "duration": "2h 54m",
     "director": "Mehboob Khan",
-    "cast": ["Nargis", "Sunil Dutt", "Rajendra Kumar", "Raaj Kumar"],
+    "cast": [
+      "Nargis",
+      "Sunil Dutt",
+      "Rajendra Kumar",
+      "Raaj Kumar"
+    ],
     "synopsis": "An impoverished village woman named Radha struggles through overwhelming adversity, floods, and loan sharks to raise her sons while upholding the moral code of her land.",
     "rating": "8.1/10",
     "posterUrl": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80",
@@ -58,7 +50,11 @@
     "genre": "Social Realism",
     "duration": "2h 11m",
     "director": "Bimal Roy",
-    "cast": ["Balraj Sahni", "Nirupa Roy", "Rattan Kumar"],
+    "cast": [
+      "Balraj Sahni",
+      "Nirupa Roy",
+      "Rattan Kumar"
+    ],
     "synopsis": "A humble farmer battles a merciless landlord who schemes to seize his ancestral two bighas of land to build a mill, leading him to seek work as a rickshaw puller in Calcutta.",
     "rating": "8.3/10",
     "posterUrl": "https://images.unsplash.com/photo-1509281373149-e957c6296406?w=500&q=80",
@@ -75,7 +71,12 @@
     "genre": "Musical / Drama",
     "duration": "2h 30m",
     "director": "Guru Dutt",
-    "cast": ["Guru Dutt", "Waheeda Rehman", "Mala Sinha", "Johnny Walker"],
+    "cast": [
+      "Guru Dutt",
+      "Waheeda Rehman",
+      "Mala Sinha",
+      "Johnny Walker"
+    ],
     "synopsis": "A talented but unacknowledged poet struggles with rejection from society and a materialistic world until a compassionate golden-hearted woman aids in having his verses published.",
     "rating": "8.4/10",
     "posterUrl": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=500&q=80",
@@ -92,7 +93,11 @@
     "genre": "Tragedy / Romance",
     "duration": "2h 35m",
     "director": "Bimal Roy",
-    "cast": ["Dilip Kumar", "Suchitra Sen", "Vyjayanthimala"],
+    "cast": [
+      "Dilip Kumar",
+      "Suchitra Sen",
+      "Vyjayanthimala"
+    ],
     "synopsis": "Separated from his childhood love Paro by aristocratic vanity, Devdas spirals into heartache and despair, befriended by the dancer Chandramukhi.",
     "rating": "8.0/10",
     "posterUrl": "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80",
@@ -109,7 +114,11 @@
     "genre": "Comedy / Drama",
     "duration": "2h 48m",
     "director": "Raj Kapoor",
-    "cast": ["Raj Kapoor", "Nargis", "Nadira"],
+    "cast": [
+      "Raj Kapoor",
+      "Nargis",
+      "Nadira"
+    ],
     "synopsis": "An educated orphan comes to Bombay in search of honest employment, navigating temptations of greed and dishonest riches before returning to integrity and true love.",
     "rating": "8.0/10",
     "posterUrl": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80",
@@ -119,6 +128,28 @@
     "fileSizeBytes": 1200000000
   },
   {
+    "id": "hindi_zanjeer_1973",
+    "title": "Zanjeer (1973 Original Classic)",
+    "year": 1973,
+    "language": "Hindi",
+    "genre": "Action / Crime / Drama",
+    "duration": "2h 22m",
+    "director": "Prakash Mehra",
+    "cast": [
+      "Amitabh Bachchan",
+      "Jaya Bhaduri",
+      "Pran",
+      "Ajit"
+    ],
+    "synopsis": "The landmark film that established Amitabh Bachchan as the Angry Young Man. Inspector Vijay battles nightmares of his parents murder and takes down the crime syndicate led by Teja. Co-starring Pran and Jaya Bhaduri. Zanjeer, Zanzeer 1973.",
+    "rating": "8.0/10",
+    "posterUrl": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80",
+    "backdropUrl": "https://images.unsplash.com/photo-1574267432553-4b4628081c31?w=1200&q=80",
+    "videoUrl": "https://archive.org/download/zanjeer-1973-hindi.-dv-drip.-720p.-avc.x-264.-aac-dd-5.1.-arabic.-esubs.-extra-movies.-by-juleyano/Zanjeer%20%281973%29%20Hindi.DvDRip.720p.AVC.x264.AAC%2CDD5.1.Arabic.ESubs.ExtraMovies.BY%20Juleyano.mp4",
+    "quality": "720p Restored",
+    "fileSizeBytes": 825946408
+  },
+  {
     "id": "eng_01",
     "title": "Night of the Living Dead",
     "year": 1968,
@@ -126,7 +157,11 @@
     "genre": "Horror / Sci-Fi",
     "duration": "1h 36m",
     "director": "George A. Romero",
-    "cast": ["Duane Jones", "Judith O'Dea", "Karl Hardman"],
+    "cast": [
+      "Duane Jones",
+      "Judith O'Dea",
+      "Karl Hardman"
+    ],
     "synopsis": "A disparate group of individuals take refuge in an abandoned rural Pennsylvania farmhouse while besieged by hordes of mysteriously reanimated corpses.",
     "rating": "7.9/10",
     "posterUrl": "https://images.unsplash.com/photo-1509281373149-e957c6296406?w=500&q=80",
@@ -143,7 +178,11 @@
     "genre": "Romantic Mystery",
     "duration": "1h 53m",
     "director": "Stanley Donen",
-    "cast": ["Cary Grant", "Audrey Hepburn", "Walter Matthau"],
+    "cast": [
+      "Cary Grant",
+      "Audrey Hepburn",
+      "Walter Matthau"
+    ],
     "synopsis": "In Paris, a glamorous widow is pursued by several ruthless men who want a fortune stolen by her murdered husband. She is aided by a charming stranger whose identity changes repeatedly.",
     "rating": "7.9/10",
     "posterUrl": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=500&q=80",
@@ -160,7 +199,11 @@
     "genre": "Comedy / Romance",
     "duration": "1h 32m",
     "director": "Howard Hawks",
-    "cast": ["Cary Grant", "Rosalind Russell", "Ralph Bellamy"],
+    "cast": [
+      "Cary Grant",
+      "Rosalind Russell",
+      "Ralph Bellamy"
+    ],
     "synopsis": "A hard-charging newspaper editor uses every dirty trick in the book to keep his top reporter ex-wife from remarrying and leaving the press room.",
     "rating": "7.8/10",
     "posterUrl": "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80",
@@ -177,7 +220,11 @@
     "genre": "Film Noir / Thriller",
     "duration": "1h 35m",
     "director": "Orson Welles",
-    "cast": ["Orson Welles", "Edward G. Robinson", "Loretta Young"],
+    "cast": [
+      "Orson Welles",
+      "Edward G. Robinson",
+      "Loretta Young"
+    ],
     "synopsis": "A war crimes investigator hunts down an infamous mastermind who has assumed a quiet identity as a respectable schoolmaster in a small Connecticut town.",
     "rating": "7.4/10",
     "posterUrl": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80",
@@ -194,7 +241,11 @@
     "genre": "Drama / Romance",
     "duration": "1h 51m",
     "director": "William A. Wellman",
-    "cast": ["Janet Gaynor", "Fredric March", "Adolphe Menjou"],
+    "cast": [
+      "Janet Gaynor",
+      "Fredric March",
+      "Adolphe Menjou"
+    ],
     "synopsis": "A young farm girl moves to Hollywood with dreams of stardom, meeting a fading matinee idol who mentors her into fame even as his own career collapses.",
     "rating": "7.5/10",
     "posterUrl": "https://images.unsplash.com/photo-1509281373149-e957c6296406?w=500&q=80",
@@ -211,7 +262,11 @@
     "genre": "Animation / Adventure",
     "duration": "1h 16m",
     "director": "Dave Fleischer",
-    "cast": ["Lanny Ross", "Pinto Colvig", "Jack Mercer"],
+    "cast": [
+      "Lanny Ross",
+      "Pinto Colvig",
+      "Jack Mercer"
+    ],
     "synopsis": "A shipwrecked traveler washes ashore on the island of Lilliput, a land inhabited by tiny people entangled in conflict with an adjacent kingdom.",
     "rating": "7.1/10",
     "posterUrl": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=500&q=80",
@@ -228,7 +283,13 @@
     "genre": "Romance / Drama / Musical",
     "duration": "3h 10m",
     "director": "Aditya Chopra",
-    "cast": ["Shah Rukh Khan", "Kajol", "Amrish Puri", "Farida Jalal", "Anupam Kher"],
+    "cast": [
+      "Shah Rukh Khan",
+      "Kajol",
+      "Amrish Puri",
+      "Farida Jalal",
+      "Anupam Kher"
+    ],
     "synopsis": "Raj and Simran meet on a trip across Europe and fall deeply in love. When Raj discovers Simran is promised to another man in Punjab, he follows her to India to win the hearts of her family without eloping. DDLJ, Dilwale Dulhaniya Le Jayenge.",
     "rating": "8.0/10",
     "posterUrl": "https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=500&q=80",
@@ -245,7 +306,13 @@
     "genre": "Romance / Drama / Musical",
     "duration": "3h 14m",
     "director": "Yash Chopra",
-    "cast": ["Shah Rukh Khan", "Preity Zinta", "Rani Mukerji", "Amitabh Bachchan", "Hema Malini"],
+    "cast": [
+      "Shah Rukh Khan",
+      "Preity Zinta",
+      "Rani Mukerji",
+      "Amitabh Bachchan",
+      "Hema Malini"
+    ],
     "synopsis": "Squadron Leader Veer Pratap Singh, an Indian Air Force rescue pilot, falls in love with Zaara Haayat Khan, an independent Pakistani woman. Veer spends 22 years in a Pakistani prison to protect her honor until human rights lawyer Saamiya Siddiqui takes up his defense. Veer Zaara, Veer Zara.",
     "rating": "7.8/10",
     "posterUrl": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=500&q=80",
