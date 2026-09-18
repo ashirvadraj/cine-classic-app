@@ -27,6 +27,7 @@ class MovieRepository(private val context: Context) {
 
     // Persistent cache for online-discovered movies so they are never lost on process recreation
     fun saveDiscoveredMovie(movie: Movie) {
+        if (movie.id == "hindi_zanjeer") return
         val current = getSavedDiscoveredMovies().toMutableList()
         val existingIndex = current.indexOfFirst { it.id == movie.id }
         if (existingIndex != -1) {
@@ -39,10 +40,11 @@ class MovieRepository(private val context: Context) {
     }
 
     fun saveDiscoveredMovies(movies: List<Movie>) {
-        if (movies.isEmpty()) return
+        val filtered = movies.filter { it.id != "hindi_zanjeer" }
+        if (filtered.isEmpty()) return
         val current = getSavedDiscoveredMovies().toMutableList()
         val currentMap = current.associateBy { it.id }.toMutableMap()
-        movies.forEach { currentMap[it.id] = it }
+        filtered.forEach { currentMap[it.id] = it }
         val json = gson.toJson(currentMap.values.toList())
         prefs.edit().putString("saved_discovered_movies", json).apply()
     }
@@ -51,7 +53,8 @@ class MovieRepository(private val context: Context) {
         val json = prefs.getString("saved_discovered_movies", null) ?: return emptyList()
         return try {
             val listType = object : TypeToken<List<Movie>>() {}.type
-            gson.fromJson(json, listType) ?: emptyList()
+            val list: List<Movie> = gson.fromJson(json, listType) ?: emptyList()
+            list.filter { it.id != "hindi_zanjeer" }
         } catch (e: Exception) {
             emptyList()
         }
@@ -157,12 +160,87 @@ class MovieRepository(private val context: Context) {
         return set.mapNotNull { getMovieById(it) }
     }
 
+    data class ContinueWatchingItem(
+        val movie: Movie,
+        val positionMs: Long,
+        val durationMs: Long,
+        val timestamp: Long
+    ) {
+        val progressPercentage: Int
+            get() = if (durationMs > 0L) {
+                ((positionMs.toFloat() / durationMs.toFloat()) * 100).toInt().coerceIn(1, 100)
+            } else 0
+
+        val formattedPosition: String
+            get() {
+                val totalSeconds = positionMs / 1000
+                val hours = totalSeconds / 3600
+                val minutes = (totalSeconds % 3600) / 60
+                val seconds = totalSeconds % 60
+                return if (hours > 0) {
+                    String.format("%dh %02dm", hours, minutes)
+                } else {
+                    String.format("%dm %02ds", minutes, seconds)
+                }
+            }
+    }
+
     // Playback Progress
-    fun saveProgress(movieId: String, positionMs: Long) {
-        prefs.edit().putLong("progress_$movieId", positionMs).apply()
+    fun saveProgress(movieId: String, positionMs: Long, durationMs: Long = 0L) {
+        if (movieId.isBlank() || movieId == "hindi_zanjeer") return
+        val editor = prefs.edit()
+        editor.putLong("progress_$movieId", positionMs)
+        if (durationMs > 0L) {
+            editor.putLong("duration_$movieId", durationMs)
+        }
+        editor.putLong("timestamp_$movieId", System.currentTimeMillis())
+
+        val currentIds = prefs.getStringSet("progress_movie_ids", emptySet())?.toMutableSet() ?: mutableSetOf()
+        val storedDuration = if (durationMs > 0L) durationMs else prefs.getLong("duration_$movieId", 0L)
+        val isFinished = storedDuration > 0L && positionMs >= (storedDuration - 30_000L)
+
+        if (positionMs > 10_000L && !isFinished) {
+            currentIds.add(movieId)
+        } else if (positionMs <= 5000L || isFinished) {
+            currentIds.remove(movieId)
+            editor.remove("progress_$movieId")
+        }
+        editor.putStringSet("progress_movie_ids", currentIds)
+        editor.apply()
     }
 
     fun getProgress(movieId: String): Long {
         return prefs.getLong("progress_$movieId", 0L)
+    }
+
+    fun getDuration(movieId: String): Long {
+        return prefs.getLong("duration_$movieId", 0L)
+    }
+
+    fun clearProgress(movieId: String) {
+        val currentIds = prefs.getStringSet("progress_movie_ids", emptySet())?.toMutableSet() ?: mutableSetOf()
+        currentIds.remove(movieId)
+        prefs.edit()
+            .remove("progress_$movieId")
+            .remove("duration_$movieId")
+            .remove("timestamp_$movieId")
+            .putStringSet("progress_movie_ids", currentIds)
+            .apply()
+    }
+
+    fun getContinueWatchingMovies(): List<ContinueWatchingItem> {
+        val currentIds = prefs.getStringSet("progress_movie_ids", emptySet()) ?: emptySet()
+        if (currentIds.isEmpty()) return emptyList()
+
+        return currentIds.mapNotNull { id ->
+            if (id == "hindi_zanjeer") return@mapNotNull null
+            val movie = getMovieById(id) ?: return@mapNotNull null
+            val pos = getProgress(id)
+            val dur = getDuration(id)
+            val time = prefs.getLong("timestamp_$id", 0L)
+            if (pos > 10_000L) {
+                ContinueWatchingItem(movie, pos, dur, time)
+            } else null
+        }.sortedByDescending { it.timestamp }
     }
 }

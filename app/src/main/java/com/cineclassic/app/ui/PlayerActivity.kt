@@ -31,6 +31,9 @@ import com.cineclassic.app.data.Movie
 import com.cineclassic.app.data.MovieRepository
 import com.cineclassic.app.data.OnlineMovieSearchService
 import com.cineclassic.app.databinding.ActivityPlayerBinding
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -43,6 +46,10 @@ class PlayerActivity : AppCompatActivity() {
     private var currentMovie: Movie? = null
     private var currentVideoId: String = ""
     private var isSubtitlesEnabled: Boolean = false
+    private var currentPositionMs: Long = 0L
+    private var currentDurationMs: Long = 0L
+    private var hasShownResumeToast: Boolean = false
+    private var progressSaveJob: Job? = null
 
     private val hideHandler = Handler(Looper.getMainLooper())
     private val hideRunnable = Runnable {
@@ -254,6 +261,10 @@ class PlayerActivity : AppCompatActivity() {
         binding.playerView.visibility = View.GONE
         binding.webViewPlayer.visibility = View.VISIBLE
 
+        val movie = currentMovie
+        val lastSavedMs = if (movie != null) repository.getProgress(movie.id) else 0L
+        val startSeconds = if (lastSavedMs > 5000L) (lastSavedMs / 1000L).toInt() else 0
+
         val webView = binding.webViewPlayer
         val settings = webView.settings
         settings.javaScriptEnabled = true
@@ -262,6 +273,45 @@ class PlayerActivity : AppCompatActivity() {
         settings.loadWithOverviewMode = true
         settings.useWideViewPort = true
         settings.cacheMode = WebSettings.LOAD_DEFAULT
+
+        webView.addJavascriptInterface(object {
+            @android.webkit.JavascriptInterface
+            fun onTimeUpdate(currentTimeSeconds: Float, durationSeconds: Float) {
+                val posMs = (currentTimeSeconds * 1000L).toLong()
+                val durMs = (durationSeconds * 1000L).toLong()
+                currentPositionMs = posMs
+                if (durMs > 0L) currentDurationMs = durMs
+
+                currentMovie?.let { m ->
+                    if (posMs > 5000L) {
+                        repository.saveProgress(m.id, posMs, durMs)
+                    }
+                }
+            }
+
+            @android.webkit.JavascriptInterface
+            fun onPlayerReady(durationSeconds: Float) {
+                val durMs = (durationSeconds * 1000L).toLong()
+                if (durMs > 0L) currentDurationMs = durMs
+                runOnUiThread {
+                    binding.progressBar.visibility = View.GONE
+                    if (startSeconds > 5 && !hasShownResumeToast) {
+                        hasShownResumeToast = true
+                        val formatted = formatDuration(startSeconds * 1000L)
+                        Toast.makeText(this@PlayerActivity, "🎬 Resumed from $formatted", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+            @android.webkit.JavascriptInterface
+            fun onMovieEnded() {
+                runOnUiThread {
+                    currentMovie?.let { m ->
+                        repository.clearProgress(m.id)
+                    }
+                }
+            }
+        }, "AndroidBridge")
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
@@ -294,20 +344,85 @@ class PlayerActivity : AppCompatActivity() {
                 <style>
                     * { margin:0; padding:0; box-sizing:border-box; background:#000000; overflow:hidden; }
                     html, body { width:100%; height:100%; background:#000000; }
-                    iframe { width:100%; height:100%; border:none; }
+                    #player { width:100%; height:100%; }
                 </style>
             </head>
             <body>
-                <iframe 
-                    src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&controls=1&modestbranding=1&rel=0&fs=1&playsinline=1&iv_load_policy=3&cc_load_policy=0&origin=https://www.youtube-nocookie.com" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-                </iframe>
+                <div id="player"></div>
+                <script>
+                    var tag = document.createElement('script');
+                    tag.src = "https://www.youtube.com/iframe_api";
+                    var firstScriptTag = document.getElementsByTagName('script')[0];
+                    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+                    var player;
+                    var timer = null;
+
+                    function onYouTubeIframeAPIReady() {
+                        player = new YT.Player('player', {
+                            width: '100%',
+                            height: '100%',
+                            videoId: '$videoId',
+                            playerVars: {
+                                'autoplay': 1,
+                                'controls': 1,
+                                'modestbranding': 1,
+                                'rel': 0,
+                                'fs': 1,
+                                'playsinline': 1,
+                                'start': $startSeconds,
+                                'iv_load_policy': 3,
+                                'cc_load_policy': 0,
+                                'origin': 'https://www.youtube.com'
+                            },
+                            events: {
+                                'onReady': onPlayerReady,
+                                'onStateChange': onPlayerStateChange
+                            }
+                        });
+                    }
+
+                    function onPlayerReady(event) {
+                        try {
+                            var dur = player.getDuration ? player.getDuration() : 0;
+                            if (window.AndroidBridge) {
+                                window.AndroidBridge.onPlayerReady(dur);
+                            }
+                        } catch(e) {}
+                    }
+
+                    function reportProgress() {
+                        if (player && player.getCurrentTime) {
+                            try {
+                                var curr = player.getCurrentTime();
+                                var dur = player.getDuration ? player.getDuration() : 0;
+                                if (window.AndroidBridge && curr > 0) {
+                                    window.AndroidBridge.onTimeUpdate(curr, dur);
+                                }
+                            } catch(e) {}
+                        }
+                    }
+
+                    function onPlayerStateChange(event) {
+                        if (event.data == YT.PlayerState.PLAYING) {
+                            if (!timer) {
+                                timer = setInterval(reportProgress, 2000);
+                            }
+                        } else if (event.data == YT.PlayerState.PAUSED) {
+                            reportProgress();
+                        } else if (event.data == YT.PlayerState.ENDED) {
+                            if (timer) { clearInterval(timer); timer = null; }
+                            if (window.AndroidBridge) {
+                                window.AndroidBridge.onMovieEnded();
+                            }
+                        }
+                    }
+                </script>
             </body>
             </html>
         """.trimIndent()
 
-        webView.loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "UTF-8", null)
+        webView.loadDataWithBaseURL("https://www.youtube.com", html, "text/html", "UTF-8", null)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -369,17 +484,28 @@ class PlayerActivity : AppCompatActivity() {
         player.setMediaItem(mediaItem)
 
         val lastSavedMs = repository.getProgress(movie.id)
-        if (lastSavedMs > 0) {
+        if (lastSavedMs > 5000L) {
             player.seekTo(lastSavedMs)
+            if (!hasShownResumeToast) {
+                hasShownResumeToast = true
+                val formatted = formatDuration(lastSavedMs)
+                Toast.makeText(this@PlayerActivity, "🎬 Resumed from $formatted", Toast.LENGTH_SHORT).show()
+            }
         }
 
         player.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 when (playbackState) {
                     Player.STATE_BUFFERING -> binding.progressBar.visibility = View.VISIBLE
-                    Player.STATE_READY -> binding.progressBar.visibility = View.GONE
+                    Player.STATE_READY -> {
+                        binding.progressBar.visibility = View.GONE
+                        exoPlayer?.let { p ->
+                            if (p.duration > 0L) currentDurationMs = p.duration
+                        }
+                    }
                     Player.STATE_ENDED -> {
-                        repository.saveProgress(movie.id, 0L)
+                        repository.clearProgress(movie.id)
+                        currentPositionMs = 0L
                         binding.progressBar.visibility = View.GONE
                     }
                     Player.STATE_IDLE -> binding.progressBar.visibility = View.GONE
@@ -399,6 +525,21 @@ class PlayerActivity : AppCompatActivity() {
                 }
             }
         })
+
+        // Periodic background save coroutine: runs every 2 seconds while playback is active
+        progressSaveJob?.cancel()
+        progressSaveJob = lifecycleScope.launch {
+            while (isActive) {
+                delay(2000)
+                exoPlayer?.let { p ->
+                    if (p.isPlaying && p.currentPosition > 5000L) {
+                        currentPositionMs = p.currentPosition
+                        currentDurationMs = p.duration
+                        repository.saveProgress(movie.id, p.currentPosition, p.duration)
+                    }
+                }
+            }
+        }
 
         player.prepare()
         player.playWhenReady = true
@@ -437,6 +578,10 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        progressSaveJob?.cancel()
+        try {
+            binding.webViewPlayer.evaluateJavascript("if (typeof reportProgress === 'function') { reportProgress(); }", null)
+        } catch (e: Exception) {}
         saveCurrentProgress()
         exoPlayer?.pause()
         binding.webViewPlayer.onPause()
@@ -449,6 +594,7 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        progressSaveJob?.cancel()
         saveCurrentProgress()
         exoPlayer?.release()
         exoPlayer = null
@@ -462,12 +608,29 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun saveCurrentProgress() {
-        val player = exoPlayer ?: return
-        val currentPosition = player.currentPosition
-        currentMovie?.let { movie ->
-            if (currentPosition > 5000) {
-                repository.saveProgress(movie.id, currentPosition)
+        val movie = currentMovie ?: return
+        exoPlayer?.let { player ->
+            val pos = player.currentPosition
+            val dur = player.duration
+            if (pos > 5000L) {
+                repository.saveProgress(movie.id, pos, dur)
             }
+            return
+        }
+        if (currentPositionMs > 5000L) {
+            repository.saveProgress(movie.id, currentPositionMs, currentDurationMs)
+        }
+    }
+
+    private fun formatDuration(ms: Long): String {
+        val totalSeconds = ms / 1000
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        return if (hours > 0) {
+            String.format("%dh %02dm %02ds", hours, minutes, seconds)
+        } else {
+            String.format("%dm %02ds", minutes, seconds)
         }
     }
 }

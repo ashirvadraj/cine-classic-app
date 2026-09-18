@@ -8,6 +8,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.cineclassic.app.R
+import com.cineclassic.app.data.CinemaTrivia
+import com.cineclassic.app.data.CinemaTriviaProvider
 import com.cineclassic.app.data.DownloadManagerHelper
 import com.cineclassic.app.data.Movie
 import com.cineclassic.app.data.MovieRepository
@@ -52,7 +54,10 @@ class MovieDetailActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        currentMovie?.let { startMonitoringProgress(it) }
+        currentMovie?.let { movie ->
+            startMonitoringProgress(movie)
+            updatePlayButton(movie)
+        }
     }
 
     override fun onPause() {
@@ -74,10 +79,11 @@ class MovieDetailActivity : AppCompatActivity() {
 
         updateWatchlistIcon(movie.id)
         startMonitoringProgress(movie)
+        updatePlayButton(movie)
+        setupTrivia(movie)
 
         // All movies including YouTube movies can now be downloaded offline
         binding.btnDownloadMovie.visibility = View.VISIBLE
-        binding.btnPlayMovie.text = "Watch Ad-Free"
 
         binding.btnBack.setOnClickListener { finish() }
 
@@ -89,6 +95,16 @@ class MovieDetailActivity : AppCompatActivity() {
         }
 
         binding.btnPlayMovie.setOnClickListener {
+            val intent = Intent(this, PlayerActivity::class.java).apply {
+                putExtra("movie_id", movie.id)
+                putExtra("movie_extra", movie)
+            }
+            startActivity(intent)
+        }
+
+        binding.btnRestartMovie.setOnClickListener {
+            repository.clearProgress(movie.id)
+            updatePlayButton(movie)
             val intent = Intent(this, PlayerActivity::class.java).apply {
                 putExtra("movie_id", movie.id)
                 putExtra("movie_extra", movie)
@@ -171,7 +187,7 @@ class MovieDetailActivity : AppCompatActivity() {
                         }
                         binding.btnDownloadMovie.text = "Downloading ${currentInfo.progressPercent}%"
                         binding.btnDownloadMovie.setIconResource(R.drawable.ic_download)
-                        binding.btnPlayMovie.text = "Watch Ad-Free"
+                        updatePlayButton(movie)
                     }
                     DownloadManagerHelper.DownloadState.DOWNLOADED -> {
                         binding.cardDownloadProgress.visibility = View.VISIBLE
@@ -182,19 +198,63 @@ class MovieDetailActivity : AppCompatActivity() {
                         binding.tvDownloadProgressBytes.text = "Saved to storage: %.1f MB (Ready for offline playback)".format(totalMb)
                         binding.btnDownloadMovie.text = "Downloaded"
                         binding.btnDownloadMovie.setIconResource(R.drawable.ic_check)
-                        binding.btnPlayMovie.text = "Watch Offline (Downloaded)"
+                        updatePlayButton(movie)
                         break
                     }
                     DownloadManagerHelper.DownloadState.NOT_DOWNLOADED -> {
                         binding.cardDownloadProgress.visibility = View.GONE
                         binding.btnDownloadMovie.text = "Download"
                         binding.btnDownloadMovie.setIconResource(R.drawable.ic_download)
-                        binding.btnPlayMovie.text = "Watch Ad-Free"
+                        updatePlayButton(movie)
                         break
                     }
                 }
                 delay(800)
             }
+        }
+    }
+
+    private fun updatePlayButton(movie: Movie) {
+        val savedMs = repository.getProgress(movie.id)
+        val isDownloaded = downloadHelper.getDownloadState(movie.id) == DownloadManagerHelper.DownloadState.DOWNLOADED
+        if (savedMs > 10_000L) {
+            val formatted = formatDuration(savedMs)
+            binding.btnPlayMovie.text = "Resume from $formatted"
+            binding.btnRestartMovie.visibility = View.VISIBLE
+        } else {
+            binding.btnPlayMovie.text = if (isDownloaded) "Watch Offline (Downloaded)" else "Watch Ad-Free"
+            binding.btnRestartMovie.visibility = View.GONE
+        }
+    }
+
+    private fun setupTrivia(movie: Movie) {
+        var currentTrivia = CinemaTriviaProvider.getTriviaForMovie(movie.id)
+            ?: CinemaTriviaProvider.getTriviaForTitle(movie.title)
+            ?: CinemaTriviaProvider.getRandomTrivia()
+
+        fun displayTrivia(trivia: CinemaTrivia) {
+            binding.tvDetailTriviaBadge.text = "${trivia.badge} • ${trivia.category.uppercase()}"
+            binding.tvDetailTriviaTitle.text = trivia.movieTitle
+            binding.tvDetailTriviaFact.text = trivia.fact
+        }
+
+        displayTrivia(currentTrivia)
+
+        binding.btnDetailTriviaNext.setOnClickListener {
+            currentTrivia = CinemaTriviaProvider.getRandomTrivia(excludeId = currentTrivia.id)
+            displayTrivia(currentTrivia)
+        }
+    }
+
+    private fun formatDuration(ms: Long): String {
+        val totalSeconds = ms / 1000
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        return if (hours > 0) {
+            String.format("%dh %02dm", hours, minutes)
+        } else {
+            String.format("%dm %02ds", minutes, seconds)
         }
     }
 

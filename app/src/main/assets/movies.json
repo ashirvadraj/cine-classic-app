@@ -1,22 +1,5 @@
 [
   {
-    "id": "hindi_zanjeer",
-    "title": "Zanjeer (Action Blockbuster)",
-    "year": 2013,
-    "language": "Hindi",
-    "genre": "Action / Crime / Thriller",
-    "duration": "1h 44m",
-    "director": "Apoorva Lakhia",
-    "cast": ["Ram Charan", "Priyanka Chopra", "Sanjay Dutt", "Prakash Raj"],
-    "synopsis": "ACP Vijay Khanna, a brutally honest police officer, is transferred to Mumbai where he takes on the ruthless oil mafia and crime lord Teja in high-octane action.",
-    "rating": "7.5/10",
-    "posterUrl": "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80",
-    "backdropUrl": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=1200&q=80",
-    "videoUrl": "youtube:2MizqUuFOkA",
-    "quality": "4K Ultra HD",
-    "fileSizeBytes": 1500000000
-  },
-  {
     "id": "hindi_zanjeer_1973",
     "title": "Zanjeer (1973 Original Classic)",
     "year": 1973,

@@ -16,6 +16,8 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.cineclassic.app.R
+import com.cineclassic.app.data.CinemaTrivia
+import com.cineclassic.app.data.CinemaTriviaProvider
 import com.cineclassic.app.data.Movie
 import com.cineclassic.app.data.MovieRepository
 import com.cineclassic.app.data.OnlineMovieSearchService
@@ -29,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var repository: MovieRepository
     private lateinit var searchAdapter: MovieAdapter
+    private var continueWatchingAdapter: ContinueWatchingAdapter? = null
 
     private var activeFilter = "ALL"
     private var onlineSearchJob: Job? = null
@@ -53,6 +56,8 @@ class MainActivity : AppCompatActivity() {
         repository = MovieRepository(this)
 
         setupHeroBanner()
+        setupContinueWatching()
+        setupTriviaCard()
         setupCategorySections()
         setupSearch()
         setupVoiceSearch()
@@ -60,9 +65,65 @@ class MainActivity : AppCompatActivity() {
         setupNavigation()
     }
 
+    override fun onResume() {
+        super.onResume()
+        setupContinueWatching()
+    }
+
+    private fun setupContinueWatching() {
+        val continueWatchingList = repository.getContinueWatchingMovies()
+        if (continueWatchingList.isNotEmpty()) {
+            binding.llContinueWatching.visibility = View.VISIBLE
+            if (continueWatchingAdapter == null) {
+                continueWatchingAdapter = ContinueWatchingAdapter(continueWatchingList) { movie ->
+                    val intent = Intent(this, PlayerActivity::class.java).apply {
+                        putExtra("movie_id", movie.id)
+                        putExtra("movie_extra", movie)
+                    }
+                    startActivity(intent)
+                }
+                binding.rvContinueWatching.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+                binding.rvContinueWatching.adapter = continueWatchingAdapter
+            } else {
+                continueWatchingAdapter?.updateItems(continueWatchingList)
+            }
+        } else {
+            binding.llContinueWatching.visibility = View.GONE
+        }
+    }
+
+    private fun setupTriviaCard() {
+        var currentTrivia = CinemaTriviaProvider.getRandomTrivia()
+
+        fun displayTrivia(trivia: CinemaTrivia) {
+            binding.tvHomeTriviaBadge.text = "${trivia.badge} • ${trivia.category.uppercase()}"
+            binding.tvHomeTriviaTitle.text = trivia.movieTitle
+            binding.tvHomeTriviaFact.text = trivia.fact
+
+            val relatedMovie = trivia.relatedMovieId?.let { repository.getMovieById(it) }
+            if (relatedMovie != null) {
+                binding.btnHomeTriviaWatch.visibility = View.VISIBLE
+                binding.btnHomeTriviaWatch.text = "Watch ${relatedMovie.title.take(18)} ▶"
+                binding.btnHomeTriviaWatch.setOnClickListener {
+                    openMovieDetails(relatedMovie)
+                }
+            } else {
+                binding.btnHomeTriviaWatch.visibility = View.GONE
+            }
+        }
+
+        displayTrivia(currentTrivia)
+
+        binding.btnHomeTriviaNext.setOnClickListener {
+            currentTrivia = CinemaTriviaProvider.getRandomTrivia(excludeId = currentTrivia.id)
+            displayTrivia(currentTrivia)
+        }
+    }
+
     private fun setupHeroBanner() {
         val movies = repository.getAllMovies()
-        val featured = movies.firstOrNull() ?: return
+        // Feature Zanjeer 1973 (Amitabh Bachchan classic) or top classic
+        val featured = repository.getMovieById("hindi_zanjeer_1973") ?: movies.firstOrNull() ?: return
 
         binding.tvHeroTitle.text = featured.displayTitleWithYear
         binding.tvHeroDesc.text = "${featured.director} • ${featured.castFormatted}"
@@ -205,6 +266,8 @@ class MainActivity : AppCompatActivity() {
 
         if (trimmedQuery.isNotEmpty() || activeFilter != "ALL") {
             binding.cardHero.visibility = View.GONE
+            binding.cardHomeTrivia.visibility = View.GONE
+            binding.llContinueWatching.visibility = View.GONE
             binding.llCategories.visibility = View.GONE
             binding.rvSearchResults.visibility = View.VISIBLE
             searchAdapter.updateMovies(localFiltered)
@@ -217,6 +280,8 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             binding.cardHero.visibility = View.VISIBLE
+            binding.cardHomeTrivia.visibility = View.VISIBLE
+            setupContinueWatching()
             binding.llCategories.visibility = View.VISIBLE
             binding.rvSearchResults.visibility = View.GONE
             binding.llSearchProgress.visibility = View.GONE
